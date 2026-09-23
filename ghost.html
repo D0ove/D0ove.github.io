@@ -1,1 +1,2858 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Spectre Trap Labyrinth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0;
+    min-height: 100vh;
+    background: radial-gradient(circle at 50% 30%, #0a0e1c 0%, #010203 100%);
+    display: flex; justify-content: center; align-items: flex-start;
+    font-family: 'Press Start 2P', 'Courier New', monospace;
+    image-rendering: pixelated;
+    padding: 10px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    color: #e0ecff;
+  }
+  .game-wrapper {
+    background: linear-gradient(180deg, #0a1020 0%, #03060c 100%);
+    padding: 14px 18px 18px;
+    border-radius: 20px;
+    border: 3px solid #2a3a60;
+    box-shadow: 0 0 70px #4a6bff30, inset 0 0 24px #000a;
+    max-width: 900px;
+    width: 100%;
+  }
+  h1 {
+    text-align: center;
+    margin: 0 0 2px;
+    font-size: 1.15rem;
+    letter-spacing: 3px;
+    color: #ffd966;
+    text-shadow: 2px 2px 0 #b06b00, 0 0 18px #ffae00;
+    font-weight: 900;
+  }
+  .subtitle {
+    text-align: center;
+    color: #5d7bd0;
+    margin: 0 0 10px;
+    font-size: 0.5rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+  .viewport-wrap {
+    position: relative;
+    margin: 0 auto;
+    border-radius: 10px;
+    box-shadow: 0 0 0 3px #121a2c, 0 0 0 6px #010204, 0 14px 40px #000c;
+    background: #000;
+    overflow: hidden;
+    line-height: 0;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-width: 780px;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    background: #000;
+    touch-action: none;
+  }
+  .hud {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .hud-item {
+    background: #050a14;
+    border: 2px solid #1a2440;
+    border-radius: 8px;
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.58rem;
+    color: #98add8;
+    box-shadow: inset 0 0 8px #000a;
+  }
+  .energy-track {
+    width: 140px;
+    height: 13px;
+    background: #080e1c;
+    border-radius: 7px;
+    overflow: hidden;
+    border: 1px solid #1e2a4a;
+    position: relative;
+  }
+  .energy-fill {
+    display: block;
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, #35e06a, #a8ff3d);
+    transition: width 0.1s linear, background 0.3s;
+  }
+  .hp-pips { display: flex; gap: 3px; }
+  .hp-pip {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    background: #ff4455;
+    border: 1px solid #ff8899;
+    box-shadow: 0 0 6px #ff445580;
+  }
+  .hp-pip.empty { background: #2a1a20; border-color: #4a2a30; box-shadow: none; }
+  .ghost-count { color: #ffd966; font-weight: bold; }
+  .ghost-count span { color: #fff; }
+  .btn {
+    background: linear-gradient(180deg, #4a68d8 0%, #223a90 100%);
+    border: 2px solid #7090e0;
+    color: white;
+    font-weight: bold;
+    padding: 7px 15px;
+    border-radius: 8px;
+    font-size: 0.58rem;
+    font-family: inherit;
+    letter-spacing: 1px;
+    box-shadow: 0 3px 0 #060c18, 0 0 10px #4a6bff50;
+    cursor: pointer;
+    transition: transform 0.06s;
+    text-transform: uppercase;
+  }
+  .btn:active {
+    transform: translateY(3px);
+    box-shadow: 0 0 0 #060c18, 0 0 16px #90b0ff;
+  }
+  .controls {
+    display: flex;
+    gap: 12px;
+    margin-top: 10px;
+    font-size: 0.5rem;
+    color: #64789e;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .controls kbd {
+    background: #101828;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-weight: bold;
+    border: 1px solid #2a3a60;
+    color: #c8d6ff;
+    font-family: inherit;
+    font-size: 0.45rem;
+  }
+  .message {
+    text-align: center;
+    font-size: 0.7rem;
+    font-weight: bold;
+    margin-top: 8px;
+    min-height: 1rem;
+    color: #ffd966;
+    text-shadow: 0 0 10px #f0b000;
+    letter-spacing: 1px;
+  }
+  .minimap-wrap {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    border: 2px solid #1a2440;
+    border-radius: 6px;
+    background: rgba(2,4,10,0.9);
+    box-shadow: 0 0 12px #000c;
+    padding: 4px;
+    line-height: 0;
+  }
+  canvas#minimap {
+    width: 96px;
+    height: 96px;
+    image-rendering: pixelated;
+    display: block;
+  }
+  .compass-wrap {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 56px;
+    height: 56px;
+    border: 2px solid #1a2440;
+    border-radius: 50%;
+    background: rgba(2,4,10,0.85);
+    box-shadow: 0 0 12px #000c;
+    line-height: 0;
+    overflow: hidden;
+  }
+  canvas#compass {
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+    display: block;
+  }
+  .overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(2, 4, 10, 0.92);
+    z-index: 10;
+    text-align: center;
+    padding: 20px;
+    gap: 14px;
+  }
+  .overlay.hidden { display: none; }
+  .overlay h2 {
+    margin: 0;
+    color: #ffd966;
+    font-size: 1.2rem;
+    letter-spacing: 3px;
+    text-shadow: 0 0 14px #f0b000;
+  }
+  .overlay p {
+    margin: 0;
+    font-size: 0.6rem;
+    color: #98add8;
+    line-height: 1.8;
+    letter-spacing: 1px;
+  }
+  .overlay .key-hint {
+    color: #ffd966;
+    font-weight: bold;
+  }
+  .timer {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(2,4,10,0.85);
+    border: 2px solid #1a2440;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 0.6rem;
+    color: #ffd966;
+    letter-spacing: 1px;
+    z-index: 5;
+  }
+  .touch-controls {
+    display: none;
+    margin-top: 12px;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+  .touch-controls.visible { display: flex; }
+  .dpad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 4px;
+    width: 150px;
+    height: 150px;
+  }
+  .dpad button {
+    background: #101828;
+    border: 2px solid #2a3a60;
+    border-radius: 8px;
+    color: #c8d6ff;
+    font-size: 1.2rem;
+    font-family: inherit;
+    touch-action: none;
+  }
+  .dpad button:active { background: #1e2a44; }
+  .dpad .empty { visibility: hidden; }
+  .action-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .action-buttons button {
+    width: 90px;
+    height: 60px;
+    border-radius: 10px;
+    border: 2px solid;
+    font-family: inherit;
+    font-size: 0.6rem;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    touch-action: none;
+  }
+  #btnFire {
+    background: linear-gradient(180deg, #4a68d8, #223a90);
+    border-color: #7090e0;
+    color: #fff;
+  }
+  #btnSprint {
+    background: linear-gradient(180deg, #d8a03a, #a06b10);
+    border-color: #f0c060;
+    color: #fff;
+  }
+  @media (max-width: 620px) {
+    .game-wrapper { padding: 10px; }
+    h1 { font-size: 0.9rem; }
+    .hud-item { font-size: 0.5rem; padding: 5px 8px; }
+    .energy-track { width: 100px; }
+    canvas#minimap { width: 72px; height: 72px; }
+    .compass-wrap { width: 44px; height: 44px; }
+  }
+</style>
+</head>
+<body>
+<div class="game-wrapper">
+  <h1>⚡ SPECTRE TRAP LABYRINTH ⚡</h1>
+  <div class="subtitle">1984 · Lost in the dark · Capture 'em all</div>
+
+  <div class="viewport-wrap">
+    <canvas id="gameCanvas" width="780" height="560"></canvas>
+    <div class="compass-wrap"><canvas id="compass" width="112" height="112"></canvas></div>
+    <div class="minimap-wrap">
+      <canvas id="minimap" width="192" height="192"></canvas>
+    </div>
+    <div id="timerDisplay" class="timer">00:00</div>
+
+    <div id="startOverlay" class="overlay">
+      <h2>SPECTRE TRAP</h2>
+      <p>
+        <span class="key-hint">WASD / ARROWS</span> — Move<br>
+        <span class="key-hint">SPACE</span> — Fire Proton Stream (auto-aim)<br>
+        <span class="key-hint">SHIFT</span> — Sprint (free)<br>
+        <span class="key-hint">P</span> — Pause<br><br>
+        Capture all spectres in the labyrinth.<br>
+        You have 3 HP. Spectres hurt on contact.<br>
+        Proton pack refills fully on energy orbs.
+      </p>
+      <button class="btn" id="startBtn">▶ Start</button>
+    </div>
+    <div id="pauseOverlay" class="overlay hidden">
+      <h2>PAUSED</h2>
+      <p>Press <span class="key-hint">P</span> to resume</p>
+    </div>
+  </div>
+
+  <div class="hud">
+    <div class="hud-item">
+      🔋
+      <div class="energy-track"><span id="energyFill" class="energy-fill"></span></div>
+    </div>
+    <div class="hud-item">
+      <span>HP</span>
+      <div class="hp-pips" id="hpPips">
+        <div class="hp-pip"></div><div class="hp-pip"></div><div class="hp-pip"></div>
+      </div>
+    </div>
+    <div class="hud-item ghost-count">👻 <span id="ghostCount">8 / 8</span></div>
+    <div class="hud-item">🧭 <span id="exploreCount">0%</span></div>
+    <button class="btn" id="restartBtn">↻ Restart</button>
+  </div>
+
+  <div class="controls">
+    <span><kbd>W A S D</kbd> / <kbd>↑ ↓ ← →</kbd> move</span>
+    <span><kbd>SPACE</kbd> fire stream</span>
+    <span><kbd>SHIFT</kbd> sprint</span>
+    <span><kbd>P</kbd> pause</span>
+  </div>
+  <div id="message" class="message"></div>
+
+  <div class="touch-controls" id="touchControls">
+    <div class="dpad">
+      <div class="empty"></div>
+      <button data-dir="up">▲</button>
+      <div class="empty"></div>
+      <button data-dir="left">◀</button>
+      <div class="empty"></div>
+      <button data-dir="right">▶</button>
+      <div class="empty"></div>
+      <button data-dir="down">▼</button>
+      <div class="empty"></div>
+    </div>
+    <div class="action-buttons">
+      <button id="btnFire">Fire</button>
+      <button id="btnSprint">Sprint</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ============================================================
+  //  SECTION 1 — CONSTANTS
+  // ============================================================
+  const TILE = 40;
+  const COLS = 63;
+  const ROWS = 63;
+  const WALL = 1;
+  const FLOOR = 0;
+
+  const VIEW_W = 780;
+  const VIEW_H = 560;
+
+  // Movement
+  const TILE_TIME = 150;
+  const SPRINT_TIME = 90;
+
+  // ---- ENERGY (proton pack) ----
+  // Only the stream drains energy. Walking/sprinting are free.
+  // Idle regen is a slow trickle.
+  const ENERGY_REGEN = 0.06;            // per frame while idle
+  const TRAP_COST = 12;                 // final capture pop
+  const ORB_FULL_REFILL = 100;          // orbs refill the whole bar
+
+  // Vision
+  const VISION_RADIUS = 7.5;
+
+  // Ghosts
+  const GHOST_COUNT = 8;
+  const GHOST_CHASE_RANGE = 10;
+  const GHOST_BFS_MAX = 15;
+
+  // Proton stream
+  const STREAM_RANGE_TILES = 8;
+  const STREAM_DRAIN_PER_SEC = 42;
+  const STREAM_CAPTURE_TIME = 1.6;
+
+  // Health
+  const MAX_HP = 3;
+  const INVULN_TIME = 1500;             // ms
+
+  // Collision
+  const HIT_DIST = TILE * 0.6;
+  const ORB_PICKUP_DIST = TILE * 0.5;
+
+  const DIRS4 = [
+    { dx: 0, dy: -1, name: 'up' },
+    { dx: 0, dy: 1,  name: 'down' },
+    { dx: -1, dy: 0, name: 'left' },
+    { dx: 1, dy: 0,  name: 'right' }
+  ];
+
+  // ============================================================
+  //  SECTION 2 — RANDOM
+  // ============================================================
+  function mulberry(seed) {
+    return function () {
+      seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  // ============================================================
+  //  SECTION 3 — MAZE
+  // ============================================================
+  function generateMaze(cols, rows) {
+    const m = [];
+    for (let y = 0; y < rows; y++) m.push(new Array(cols).fill(WALL));
+
+    const stack = [[1, 1]];
+    m[1][1] = FLOOR;
+    const carveDirs = [[0, -2], [0, 2], [-2, 0], [2, 0]];
+
+    while (stack.length) {
+      const [cx, cy] = stack[stack.length - 1];
+      const neighbors = [];
+      for (const [dx, dy] of carveDirs) {
+        const nx = cx + dx, ny = cy + dy;
+        if (nx > 0 && nx < cols - 1 && ny > 0 && ny < rows - 1 && m[ny][nx] === WALL) {
+          neighbors.push([nx, ny, cx + dx / 2, cy + dy / 2]);
+        }
+      }
+      if (neighbors.length === 0) {
+        stack.pop();
+      } else {
+        const [nx, ny, wx, wy] = neighbors[Math.floor(Math.random() * neighbors.length)];
+        m[wy][wx] = FLOOR;
+        m[ny][nx] = FLOOR;
+        stack.push([nx, ny]);
+      }
+    }
+
+    // Braiding — remove ~12% of dead ends
+    const deadEnds = [];
+    for (let y = 1; y < rows - 1; y++) {
+      for (let x = 1; x < cols - 1; x++) {
+        if (m[y][x] !== FLOOR) continue;
+        let n = 0;
+        if (m[y-1][x] === FLOOR) n++;
+        if (m[y+1][x] === FLOOR) n++;
+        if (m[y][x-1] === FLOOR) n++;
+        if (m[y][x+1] === FLOOR) n++;
+        if (n === 1) deadEnds.push([x, y]);
+      }
+    }
+    for (let i = deadEnds.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deadEnds[i], deadEnds[j]] = [deadEnds[j], deadEnds[i]];
+    }
+    const removeCount = Math.floor(deadEnds.length * 0.12);
+    for (let i = 0; i < removeCount; i++) {
+      const [x, y] = deadEnds[i];
+      const candidates = [];
+      for (const d of DIRS4) {
+        const nx = x + d.dx, ny = y + d.dy;
+        if (nx <= 0 || nx >= cols - 1 || ny <= 0 || ny >= rows - 1) continue;
+        if (m[ny][nx] === WALL) {
+          const bx = nx + d.dx, by = ny + d.dy;
+          if (bx > 0 && bx < cols - 1 && by > 0 && by < rows - 1 && m[by][bx] === FLOOR) {
+            candidates.push([nx, ny]);
+          }
+        }
+      }
+      if (candidates.length > 0) {
+        const [wx, wy] = candidates[Math.floor(Math.random() * candidates.length)];
+        m[wy][wx] = FLOOR;
+      }
+    }
+
+    // Small rooms
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const w = 2, h = 2;
+      const sx = 3 + Math.floor(Math.random() * (cols - w - 6));
+      const sy = 3 + Math.floor(Math.random() * (rows - h - 6));
+      let wallCount = 0;
+      for (let y = sy - 1; y <= sy + h; y++) {
+        for (let x = sx - 1; x <= sx + w; x++) {
+          if (x < 0 || x >= cols || y < 0 || y >= rows) continue;
+          if (m[y][x] === WALL) wallCount++;
+        }
+      }
+      if (wallCount < 8) continue;
+      for (let y = sy; y < sy + h; y++) {
+        for (let x = sx; x < sx + w; x++) {
+          if (x > 0 && x < cols - 1 && y > 0 && y < rows - 1) m[y][x] = FLOOR;
+        }
+      }
+    }
+
+    // Flood fill
+    const reachable = [];
+    for (let y = 0; y < rows; y++) reachable.push(new Array(cols).fill(false));
+    const q = [[1, 1]];
+    reachable[1][1] = true;
+    while (q.length) {
+      const [x, y] = q.shift();
+      for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+        const nx = x + dx, ny = y + dy;
+        if (nx >= 0 && nx < cols && ny >= 0 && ny < rows && !reachable[ny][nx] && m[ny][nx] === FLOOR) {
+          reachable[ny][nx] = true;
+          q.push([nx, ny]);
+        }
+      }
+    }
+    for (let y = 0; y < rows; y++)
+      for (let x = 0; x < cols; x++)
+        if (m[y][x] === FLOOR && !reachable[y][x]) m[y][x] = WALL;
+
+    for (let y = 0; y < rows; y++) { m[y][0] = WALL; m[y][cols - 1] = WALL; }
+    for (let x = 0; x < cols; x++) { m[0][x] = WALL; m[rows - 1][x] = WALL; }
+
+    return m;
+  }
+
+  let maze = generateMaze(COLS, ROWS);
+
+  // ============================================================
+  //  SECTION 4 — CANVAS
+  // ============================================================
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  const minimap = document.getElementById('minimap');
+  const mmCtx = minimap.getContext('2d');
+  mmCtx.imageSmoothingEnabled = false;
+
+  const compass = document.getElementById('compass');
+  const cpCtx = compass.getContext('2d');
+  cpCtx.imageSmoothingEnabled = false;
+
+  const energyFill = document.getElementById('energyFill');
+  const hpPipsEl = document.getElementById('hpPips');
+  const ghostCountEl = document.getElementById('ghostCount');
+  const exploreCountEl = document.getElementById('exploreCount');
+  const messageEl = document.getElementById('message');
+  const timerEl = document.getElementById('timerDisplay');
+  const startOverlay = document.getElementById('startOverlay');
+  const pauseOverlay = document.getElementById('pauseOverlay');
+  const touchControls = document.getElementById('touchControls');
+
+  function applyDPR(canvasEl, ctxEl, cssW, cssH) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvasEl.width = Math.floor(cssW * dpr);
+    canvasEl.height = Math.floor(cssH * dpr);
+    canvasEl.style.width = cssW + 'px';
+    canvasEl.style.height = cssH + 'px';
+    ctxEl.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctxEl.imageSmoothingEnabled = false;
+  }
+  function resizeGameCanvas() {
+    const wrap = canvas.parentElement;
+    const maxW = Math.min(wrap.clientWidth, 780);
+    const ratio = VIEW_H / VIEW_W;
+    const cssW = maxW;
+    const cssH = Math.floor(cssW * ratio);
+    applyDPR(canvas, ctx, cssW, cssH);
+  }
+  window.addEventListener('resize', resizeGameCanvas);
+  resizeGameCanvas();
+
+  // ============================================================
+  //  SECTION 5 — PRE-RENDERED SPRITES
+  // ============================================================
+  const WALL_VARIANTS = 8;
+  const FLOOR_VARIANTS = 4;
+  const wallSprites = [];
+  const floorSprites = [];
+
+  function prerenderWall(variant) {
+    const c = document.createElement('canvas');
+    c.width = TILE; c.height = TILE;
+    const g = c.getContext('2d');
+    g.imageSmoothingEnabled = false;
+    const seed = variant * 9871 + 12345;
+    const r = mulberry(seed);
+
+    g.fillStyle = '#0a0e18';
+    g.fillRect(0, 0, TILE, TILE);
+
+    const brickH = 9;
+    const brickW = 18;
+    const totalRows = Math.ceil(TILE / (brickH + 1));
+
+    for (let row = 0; row < totalRows; row++) {
+      const rowY = 1 + row * (brickH + 1);
+      const offset = row % 2 === 0 ? 0 : -brickW / 2;
+      for (let b = -1; b < Math.ceil(TILE / brickW) + 1; b++) {
+        const bx = 1 + b * (brickW + 1) + offset;
+        const bw = Math.min(brickW, TILE - bx - 1);
+        if (bw <= 0) continue;
+        const base = 32 + Math.floor(r() * 24);
+        const tint = Math.floor(r() * 16);
+        g.fillStyle = `rgb(${base},${base + 4},${base + 20 + tint})`;
+        g.fillRect(bx, rowY, bw, brickH);
+
+        g.fillStyle = `rgba(${base + 55},${base + 60},${base + 90},0.55)`;
+        g.fillRect(bx, rowY, bw, 1);
+        g.fillStyle = 'rgba(0,0,0,0.75)';
+        g.fillRect(bx, rowY + brickH - 2, bw, 2);
+        g.fillStyle = 'rgba(255,255,255,0.05)';
+        g.fillRect(bx, rowY, 1, brickH);
+        g.fillStyle = 'rgba(0,0,0,0.4)';
+        g.fillRect(bx + bw - 1, rowY, 1, brickH);
+
+        {
+          const cLen = 1 + Math.floor(r() * 2);
+          const cTop = rowY + 1 + Math.floor(r() * Math.max(1, brickH - 4));
+          g.strokeStyle = 'rgba(0,0,0,0.85)';
+          g.lineWidth = 1;
+          g.beginPath();
+          g.moveTo(bx, cTop);
+          g.lineTo(bx + cLen, cTop + 1);
+          g.lineTo(bx + 1, cTop + 3);
+          g.stroke();
+          if (r() < 0.55) {
+            const chipY = rowY + 1 + Math.floor(r() * (brickH - 4));
+            g.fillStyle = 'rgba(0,0,0,0.7)';
+            g.fillRect(bx, chipY, 1 + Math.floor(r() * 2), 2);
+          }
+          if (r() < 0.35) {
+            const by = rowY + (r() < 0.5 ? 0 : brickH - 3);
+            g.fillStyle = 'rgba(0,0,0,0.75)';
+            g.fillRect(bx, by, 2, 1);
+            g.fillRect(bx, by + 1, 1, 1);
+          }
+        }
+        {
+          const cLen = 1 + Math.floor(r() * 2);
+          const cTop = rowY + 1 + Math.floor(r() * Math.max(1, brickH - 4));
+          g.strokeStyle = 'rgba(0,0,0,0.85)';
+          g.lineWidth = 1;
+          g.beginPath();
+          g.moveTo(bx + bw - 1, cTop);
+          g.lineTo(bx + bw - 1 - cLen, cTop + 1);
+          g.lineTo(bx + bw - 2, cTop + 3);
+          g.stroke();
+          if (r() < 0.55) {
+            const chipY = rowY + 1 + Math.floor(r() * (brickH - 4));
+            g.fillStyle = 'rgba(0,0,0,0.7)';
+            g.fillRect(bx + bw - 2, chipY, 1 + Math.floor(r() * 2), 2);
+          }
+          if (r() < 0.35) {
+            const by = rowY + (r() < 0.5 ? 0 : brickH - 3);
+            g.fillStyle = 'rgba(0,0,0,0.75)';
+            g.fillRect(bx + bw - 2, by, 2, 1);
+            g.fillRect(bx + bw - 1, by + 1, 1, 1);
+          }
+        }
+
+        const specks = Math.floor(r() * 3);
+        for (let s = 0; s < specks; s++) {
+          const sx = bx + 1 + Math.floor(r() * Math.max(1, bw - 2));
+          const sy = rowY + 1 + Math.floor(r() * Math.max(1, brickH - 2));
+          g.fillStyle = 'rgba(0,0,0,0.5)';
+          g.fillRect(sx, sy, 1, 1);
+        }
+      }
+    }
+
+    g.fillStyle = '#050810';
+    g.fillRect(0, 0, TILE, 1);
+    g.fillRect(0, TILE - 1, TILE, 1);
+    g.fillRect(0, 0, 1, TILE);
+    g.fillRect(TILE - 1, 0, 1, TILE);
+
+    g.fillStyle = 'rgba(90,110,160,0.35)';
+    g.fillRect(1, 1, TILE - 2, 1);
+    g.fillStyle = 'rgba(90,110,160,0.22)';
+    g.fillRect(1, 1, 1, TILE - 2);
+
+    if (r() < 0.28) {
+      const mx = Math.floor(r() * (TILE - 12));
+      const my = Math.floor(r() * (TILE - 12));
+      g.fillStyle = 'rgba(28,62,38,0.8)';
+      g.fillRect(mx, my, 8, 5);
+      g.fillRect(mx + 2, my + 4, 6, 4);
+      g.fillStyle = 'rgba(48,92,58,0.55)';
+      g.fillRect(mx + 1, my, 3, 2);
+      g.fillRect(mx + 5, my + 6, 3, 2);
+    }
+
+    return c;
+  }
+
+  function prerenderFloor(variant) {
+    const c = document.createElement('canvas');
+    c.width = TILE; c.height = TILE;
+    const g = c.getContext('2d');
+    g.imageSmoothingEnabled = false;
+    const seed = variant * 5150 + 7777;
+    const r = mulberry(seed);
+
+    const baseShades = ['#0c1220', '#0a0f1c', '#101624', '#080c18'];
+    g.fillStyle = baseShades[variant % baseShades.length];
+    g.fillRect(0, 0, TILE, TILE);
+
+    g.strokeStyle = 'rgba(0,0,0,0.35)';
+    g.lineWidth = 1;
+    g.strokeRect(1.5, 1.5, TILE - 3, TILE - 3);
+
+    for (let i = 0; i < 3; i++) {
+      const px = Math.floor(r() * (TILE - 6)) + 3;
+      const py = Math.floor(r() * (TILE - 6)) + 3;
+      g.fillStyle = 'rgba(0,0,0,0.4)';
+      g.fillRect(px, py, 3 + Math.floor(r() * 3), 2 + Math.floor(r() * 2));
+    }
+
+    if (r() < 0.15) {
+      const px = 6 + Math.floor(r() * (TILE - 16));
+      const py = 6 + Math.floor(r() * (TILE - 16));
+      g.fillStyle = 'rgba(30,60,40,0.45)';
+      g.beginPath();
+      g.ellipse(px, py, 5, 3, 0, 0, Math.PI * 2);
+      g.fill();
+    }
+
+    return c;
+  }
+
+  function buildSprites() {
+    wallSprites.length = 0;
+    floorSprites.length = 0;
+    for (let i = 0; i < WALL_VARIANTS; i++) wallSprites.push(prerenderWall(i));
+    for (let i = 0; i < FLOOR_VARIANTS; i++) floorSprites.push(prerenderFloor(i));
+  }
+
+  const torchGlowCanvas = (function () {
+    const c = document.createElement('canvas');
+    c.width = 120; c.height = 120;
+    const g = c.getContext('2d');
+    const grad = g.createRadialGradient(60, 60, 0, 60, 60, 60);
+    grad.addColorStop(0, 'rgba(255, 220, 140, 0.9)');
+    grad.addColorStop(0.4, 'rgba(255, 170, 60, 0.4)');
+    grad.addColorStop(1, 'rgba(255, 140, 40, 0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 120, 120);
+    return c;
+  })();
+
+  // ============================================================
+  //  SECTION 6 — AUDIO
+  // ============================================================
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  let audioCtx = null;
+  let beamOsc = null, beamGain = null;
+
+  function ensureAudio() {
+    if (!audioCtx) {
+      try { audioCtx = new AudioCtx(); } catch (e) { audioCtx = null; }
+    }
+  }
+  function beep(freq, dur, type, vol) {
+    if (!audioCtx) return;
+    const o = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    o.type = type || 'square';
+    o.frequency.value = freq;
+    g.gain.value = vol || 0.06;
+    o.connect(g);
+    g.connect(audioCtx.destination);
+    const t = audioCtx.currentTime;
+    o.start(t);
+    g.gain.setValueAtTime(g.gain.value, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.stop(t + dur + 0.02);
+  }
+  function startBeamSound() {
+    if (!audioCtx || beamOsc) return;
+    beamOsc = audioCtx.createOscillator();
+    beamGain = audioCtx.createGain();
+    beamOsc.type = 'sawtooth';
+    beamOsc.frequency.value = 110;
+    beamGain.gain.value = 0.04;
+    beamOsc.connect(beamGain);
+    beamGain.connect(audioCtx.destination);
+    beamOsc.start();
+  }
+  function stopBeamSound() {
+    if (beamOsc) {
+      try { beamOsc.stop(); } catch (e) {}
+      beamOsc = null; beamGain = null;
+    }
+  }
+
+  // ============================================================
+  //  SECTION 7 — FOG OF WAR
+  // ============================================================
+  const explored = [];
+  for (let y = 0; y < ROWS; y++) explored.push(new Array(COLS).fill(0));
+
+  function hasLineOfSight(x0, y0, x1, y1) {
+    if (x0 === x1 && y0 === y1) return true;
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    const adx = Math.abs(dx), ady = Math.abs(dy);
+    const steps = Math.max(adx, ady);
+    if (steps === 0) return true;
+    const sx = dx / steps, sy = dy / steps;
+    let cx = x0 + 0.5, cy = y0 + 0.5;
+    for (let i = 0; i < steps; i++) {
+      cx += sx; cy += sy;
+      const mx = Math.floor(cx);
+      const my = Math.floor(cy);
+      if (mx === x1 && my === y1) return true;
+      if (mx < 0 || mx >= COLS || my < 0 || my >= ROWS) return false;
+      if (maze[my][mx] === WALL) return false;
+    }
+    return true;
+  }
+
+  function markExplored(cx, cy, radius) {
+    const r = Math.ceil(radius);
+    for (let y = cy - r; y <= cy + r; y++) {
+      for (let x = cx - r; x <= cx + r; x++) {
+        if (x < 0 || x >= COLS || y < 0 || y >= ROWS) continue;
+        const dx = x - cx, dy = y - cy;
+        const d2 = dx * dx + dy * dy;
+        if (d2 <= radius * radius) {
+          if (hasLineOfSight(cx, cy, x, y)) explored[y][x] = 2;
+          else if (explored[y][x] === 0) explored[y][x] = 1;
+        } else if (d2 <= (radius + 1.5) * (radius + 1.5)) {
+          if (explored[y][x] === 0 && hasLineOfSight(cx, cy, x, y)) explored[y][x] = 1;
+        }
+      }
+    }
+  }
+
+  function revealAroundTorches() {
+    for (const t of torchLights) {
+      const r = 3;
+      for (let y = t.y - r; y <= t.y + r; y++) {
+        for (let x = t.x - r; x <= t.x + r; x++) {
+          if (x < 0 || x >= COLS || y < 0 || y >= ROWS) continue;
+          const dx = x - t.x, dy = y - t.y;
+          if (dx * dx + dy * dy > r * r) continue;
+          if (hasLineOfSight(t.x, t.y, x, y)) {
+            if (explored[y][x] === 0) explored[y][x] = 2;
+          }
+        }
+      }
+    }
+  }
+
+  function decayVision() {
+    for (let y = 0; y < ROWS; y++)
+      for (let x = 0; x < COLS; x++)
+        if (explored[y][x] === 2) explored[y][x] = 1;
+  }
+
+  let totalFloorTiles = 0;
+  function recountFloorTiles() {
+    totalFloorTiles = 0;
+    for (let y = 0; y < ROWS; y++)
+      for (let x = 0; x < COLS; x++)
+        if (maze[y][x] === FLOOR) totalFloorTiles++;
+  }
+
+  function exploredPercent() {
+    let known = 0;
+    for (let y = 0; y < ROWS; y++)
+      for (let x = 0; x < COLS; x++)
+        if (maze[y][x] === FLOOR && explored[y][x] > 0) known++;
+    if (totalFloorTiles === 0) return 0;
+    return Math.floor((known / totalFloorTiles) * 100);
+  }
+
+  // ============================================================
+  //  SECTION 8 — GAME STATE
+  // ============================================================
+  const player = {
+    tileX: 1, tileY: 1,
+    fromX: 1, fromY: 1,
+    toX: 1, toY: 1,
+    moveStart: 0,
+    moveDur: TILE_TIME,
+    moving: false,
+    facing: 'down',
+    sprinting: false,
+    bob: 0,
+    torchPhase: 0,
+    hp: MAX_HP,
+    invulnUntil: 0
+  };
+
+  const camera = {
+    x: 0, y: 0,
+    targetX: 0, targetY: 0,
+    shakeX: 0, shakeY: 0,
+    shakeAmount: 0
+  };
+
+  const stream = {
+    firing: false,
+    targetGhost: null,
+    hitX: 0, hitY: 0,
+    sparks: []
+  };
+
+  let ghosts = [];
+  let energy = 100;
+  let gameOver = false;
+  let win = false;
+  let paused = false;
+  let started = false;
+  let lastFrame = performance.now();
+  let particles = [];
+  let time = 0;
+  let lastPlayerTile = { x: 1, y: 1 };
+  let torchLights = [];
+  let ectoplasmDrips = [];
+  let floatingEmbers = [];
+  let fogPatches = [];
+  let breadcrumbs = [];
+  let energyOrbs = [];
+
+  let runTimeMs = 0;
+  let bestTimeMs = Infinity;
+
+  const keys = {};
+
+  // ============================================================
+  //  SECTION 9 — TORCHES
+  // ============================================================
+  function placeTorches() {
+    torchLights = [];
+    let placed = 0, attempts = 0;
+    while (placed < 60 && attempts < 8000) {
+      attempts++;
+      const x = 1 + Math.floor(Math.random() * (COLS - 2));
+      const y = 1 + Math.floor(Math.random() * (ROWS - 2));
+      if (maze[y][x] !== FLOOR) continue;
+      const wallDirs = DIRS4.filter(d => maze[y + d.dy]?.[x + d.dx] === WALL);
+      if (wallDirs.length >= 1) {
+        torchLights.push({
+          x, y,
+          phase: Math.random() * Math.PI * 2,
+          speed: 2.8 + Math.random() * 2,
+          dir: wallDirs[0],
+          hue: 25 + Math.random() * 25
+        });
+        placed++;
+      }
+    }
+  }
+
+  // ============================================================
+  //  SECTION 10 — ATMOSPHERE
+  // ============================================================
+  function randomFloorTile() {
+    for (let i = 0; i < 200; i++) {
+      const x = 1 + Math.floor(Math.random() * (COLS - 2));
+      const y = 1 + Math.floor(Math.random() * (ROWS - 2));
+      if (maze[y][x] === FLOOR) return { x, y };
+    }
+    return { x: 1, y: 1 };
+  }
+
+  function spawnEctoplasmDrips() {
+    ectoplasmDrips = [];
+    for (let i = 0; i < 70; i++) {
+      const t = randomFloorTile();
+      ectoplasmDrips.push({
+        x: t.x * TILE + TILE / 2,
+        y: t.y * TILE + TILE / 2,
+        r: 2 + Math.random() * 4,
+        phase: Math.random() * Math.PI * 2,
+        speed: 0.5 + Math.random() * 0.8,
+        hue: 80 + Math.random() * 60
+      });
+    }
+  }
+
+  function spawnEmbers() {
+    floatingEmbers = [];
+    for (let i = 0; i < 100; i++) {
+      const t = randomFloorTile();
+      floatingEmbers.push({
+        x: t.x * TILE + TILE / 2,
+        y: t.y * TILE + TILE / 2,
+        vx: (Math.random() - 0.5) * 0.15,
+        vy: -0.1 - Math.random() * 0.2,
+        phase: Math.random() * Math.PI * 2,
+        speed: 0.5 + Math.random() * 1.5,
+        size: 1 + Math.random() * 2,
+        hue: 30 + Math.random() * 30
+      });
+    }
+  }
+
+  function spawnFogPatches() {
+    fogPatches = [];
+    for (let i = 0; i < 25; i++) {
+      const t = randomFloorTile();
+      fogPatches.push({
+        x: t.x * TILE + TILE / 2,
+        y: t.y * TILE + TILE / 2,
+        r: 40 + Math.random() * 80,
+        phase: Math.random() * Math.PI * 2,
+        speed: 0.15 + Math.random() * 0.25,
+        vx: (Math.random() - 0.5) * 0.05,
+        vy: (Math.random() - 0.5) * 0.05
+      });
+    }
+  }
+
+  // ============================================================
+  //  SECTION 11 — ENERGY ORBS
+  // ============================================================
+  function spawnEnergyOrbs() {
+    energyOrbs = [];
+    const used = new Set();
+    let placed = 0, attempts = 0;
+    while (placed < 30 && attempts < 8000) {
+      attempts++;
+      const x = 1 + Math.floor(Math.random() * (COLS - 2));
+      const y = 1 + Math.floor(Math.random() * (ROWS - 2));
+      if (maze[y][x] !== FLOOR) continue;
+      if (Math.hypot(x - 1, y - 1) < 4) continue;
+      const key = y * COLS + x;
+      if (used.has(key)) continue;
+      used.add(key);
+      energyOrbs.push({
+        tileX: x, tileY: y,
+        phase: Math.random() * Math.PI * 2,
+        alive: true,
+        respawnTime: 0
+      });
+      placed++;
+    }
+  }
+
+  // ============================================================
+  //  SECTION 12 — GHOSTS
+  // ============================================================
+  function randomFloorFarFrom(sx, sy, minDist, avoidTiles) {
+    for (let tries = 0; tries < 3000; tries++) {
+      const x = 1 + Math.floor(Math.random() * (COLS - 2));
+      const y = 1 + Math.floor(Math.random() * (ROWS - 2));
+      if (maze[y][x] !== FLOOR) continue;
+      if (Math.hypot(x - sx, y - sy) < minDist) continue;
+      if (avoidTiles && avoidTiles.has(y * COLS + x)) continue;
+      return { x, y };
+    }
+    return { x: COLS - 2, y: ROWS - 2 };
+  }
+
+  function resetGhosts() {
+    ghosts = [];
+    const archetypes = ['gloop', 'shade', 'wraith', 'spectre', 'gloop', 'shade', 'wraith', 'spectre'];
+    const usedTiles = new Set();
+    for (let i = 0; i < GHOST_COUNT; i++) {
+      const pos = randomFloorFarFrom(1, 1, 12, usedTiles);
+      usedTiles.add(pos.y * COLS + pos.x);
+      const type = archetypes[i % archetypes.length];
+      ghosts.push({
+        tileX: pos.x, tileY: pos.y,
+        fromX: pos.x, fromY: pos.y,
+        toX: pos.x, toY: pos.y,
+        moveStart: performance.now(),
+        moveDur: ghostSpeedFor(type),
+        moving: false,
+        alive: true,
+        bob: Math.random() * Math.PI * 2,
+        lastDir: null,
+        glow: Math.random() * Math.PI * 2,
+        personality: Math.random(),
+        type: type,
+        wobble: Math.random() * Math.PI * 2,
+        tongue: Math.random() > 0.5,
+        beingStreamed: false,
+        streamProgress: 0,   // 0..1 — only ever increases
+        hitFlash: 0,
+        alertUntil: 0
+      });
+    }
+  }
+
+  function ghostSpeedFor(type) {
+    switch (type) {
+      case 'gloop':   return 260;
+      case 'shade':   return 300;
+      case 'wraith':  return 330;
+      case 'spectre': return 380;
+      default:        return 300;
+    }
+  }
+
+  function startGhostMove(g, dir) {
+    if (!dir) return;
+    const nx = g.tileX + dir.dx;
+    const ny = g.tileY + dir.dy;
+    if (isWall(nx, ny)) return;
+    g.fromX = g.tileX;
+    g.fromY = g.tileY;
+    g.toX = nx;
+    g.toY = ny;
+    g.tileX = nx;
+    g.tileY = ny;
+    g.moveStart = performance.now();
+    g.moveDur = ghostSpeedFor(g.type) * (g.beingStreamed ? 2.2 : 1);
+    g.moving = true;
+    g.lastDir = dir;
+  }
+
+  function bfsPath(startX, startY, goalX, goalY, maxSteps) {
+    if (startX === goalX && startY === goalY) return [];
+    const visited = new Map();
+    const queue = [[startX, startY]];
+    visited.set(startY * COLS + startX, null);
+    let steps = 0;
+    let found = false;
+    while (queue.length && steps < maxSteps * 4) {
+      const [cx, cy] = queue.shift();
+      steps++;
+      if (cx === goalX && cy === goalY) { found = true; break; }
+      for (const d of DIRS4) {
+        const nx = cx + d.dx, ny = cy + d.dy;
+        if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) continue;
+        if (maze[ny][nx] === WALL) continue;
+        const key = ny * COLS + nx;
+        if (visited.has(key)) continue;
+        visited.set(key, [cx, cy, d]);
+        let depth = 0;
+        let k = key;
+        while (visited.get(k)) {
+          const v = visited.get(k);
+          if (!v) break;
+          depth++;
+          k = v[1] * COLS + v[0];
+          if (depth > maxSteps + 2) break;
+        }
+        if (depth > maxSteps) continue;
+        queue.push([nx, ny]);
+      }
+    }
+    if (!found) return null;
+    const path = [];
+    let cur = goalY * COLS + goalX;
+    while (true) {
+      const v = visited.get(cur);
+      if (!v) break;
+      path.unshift({ x: cur % COLS, y: Math.floor(cur / COLS), dir: v[2] });
+      cur = v[1] * COLS + v[0];
+    }
+    return path;
+  }
+
+  function updateGhosts(now) {
+    for (const g of ghosts) {
+      if (!g.alive) continue;
+      g.glow += 0.05;
+      g.wobble += 0.03;
+      if (g.hitFlash > 0) g.hitFlash -= 0.08;
+
+      if (g.moving) {
+        const t = (now - g.moveStart) / g.moveDur;
+        if (t >= 1) {
+          g.moving = false;
+          g.fromX = g.tileX;
+          g.fromY = g.tileY;
+        }
+      }
+
+      if (!g.moving) {
+        let chosen = null;
+        if (g.beingStreamed) {
+          const options = DIRS4.filter(d => !isWall(g.tileX + d.dx, g.tileY + d.dy));
+          if (options.length) {
+            options.sort((a, b) => {
+              const da = Math.hypot(g.tileX + a.dx - player.tileX, g.tileY + a.dy - player.tileY);
+              const db = Math.hypot(g.tileX + b.dx - player.tileX, g.tileY + b.dy - player.tileY);
+              return db - da;
+            });
+            chosen = options[0];
+          }
+        } else {
+          const distToPlayer = Math.hypot(g.tileX - player.tileX, g.tileY - player.tileY);
+          const alertBoost = (now < g.alertUntil) ? 4 : 0;
+          const chaseRange = GHOST_CHASE_RANGE + alertBoost;
+          const shouldChase = distToPlayer < chaseRange;
+
+          if (shouldChase) {
+            const path = bfsPath(g.tileX, g.tileY, player.tileX, player.tileY, GHOST_BFS_MAX);
+            if (path && path.length > 0) {
+              chosen = path[0].dir;
+            }
+          }
+
+          if (!chosen) {
+            if (g.lastDir) {
+              const cont = DIRS4.find(d => d.dx === g.lastDir.dx && d.dy === g.lastDir.dy);
+              if (cont && !isWall(g.tileX + cont.dx, g.tileY + cont.dy) && Math.random() < 0.7) {
+                chosen = cont;
+              }
+            }
+            if (!chosen) {
+              const valid = DIRS4.filter(d => !isWall(g.tileX + d.dx, g.tileY + d.dy));
+              if (valid.length) {
+                let options = valid;
+                if (g.lastDir && valid.length > 1) {
+                  options = valid.filter(d => !(d.dx === -g.lastDir.dx && d.dy === -g.lastDir.dy));
+                  if (options.length === 0) options = valid;
+                }
+                chosen = options[Math.floor(Math.random() * options.length)];
+              }
+            }
+          }
+        }
+        if (chosen) startGhostMove(g, chosen);
+      }
+    }
+  }
+
+  function checkGhostCollisions(now) {
+    if (gameOver || win) return;
+    if (now < player.invulnUntil) return;
+    const pp = playerPixel();
+    for (const g of ghosts) {
+      if (!g.alive) continue;
+      const gp = ghostPixel(g);
+      const dx = gp.px - pp.px;
+      const dy = gp.py - pp.py;
+      if (dx * dx + dy * dy < HIT_DIST * HIT_DIST) {
+        player.hp--;
+        player.invulnUntil = now + INVULN_TIME;
+        camera.shakeAmount = 16;
+        beep(180, 0.18, 'square', 0.12);
+        spawnParticles(pp.px, pp.py, '#ff5566', 30, 5, 800);
+        updateHPUI();
+        if (player.hp <= 0) {
+          gameOver = true;
+          messageEl.textContent = '💀 THE SPECTRES GOT YOU...';
+          beep(90, 0.6, 'sawtooth', 0.15);
+        } else {
+          messageEl.textContent = '💥 HIT! ' + player.hp + ' HP LEFT';
+          setTimeout(() => { if (!gameOver && !win) messageEl.textContent = ''; }, 900);
+        }
+        return;
+      }
+    }
+  }
+
+  function ghostPixel(g) {
+    if (!g.moving) {
+      return { px: g.tileX * TILE + TILE / 2, py: g.tileY * TILE + TILE / 2 };
+    }
+    const t = Math.min(1, (performance.now() - g.moveStart) / g.moveDur);
+    const e = easeInOut(t);
+    const px = lerp(g.fromX, g.toX, e) * TILE + TILE / 2;
+    const py = lerp(g.fromY, g.toY, e) * TILE + TILE / 2;
+    return { px, py };
+  }
+
+  // ============================================================
+  //  SECTION 13 — PLAYER MOVEMENT
+  // ============================================================
+  function tryMove(dx, dy, dir, now) {
+    if (gameOver || win || player.moving || paused) return;
+    const nx = player.tileX + dx;
+    const ny = player.tileY + dy;
+    player.facing = dir;
+    if (isWall(nx, ny)) return;
+
+    // ---- Sprint is free: no energy cost, no energy requirement ----
+    const sprinting = !!(keys['Shift'] || keys['shift']);
+    player.sprinting = sprinting;
+
+    player.fromX = player.tileX;
+    player.fromY = player.tileY;
+    player.toX = nx;
+    player.toY = ny;
+    player.tileX = nx;
+    player.tileY = ny;
+    player.moveStart = now;
+    player.moveDur = sprinting ? SPRINT_TIME : TILE_TIME;
+    player.moving = true;
+
+    breadcrumbs.push({
+      x: nx * TILE + TILE / 2,
+      y: ny * TILE + TILE / 2,
+      life: 7000, maxLife: 7000
+    });
+    if (breadcrumbs.length > 80) breadcrumbs.shift();
+  }
+
+  // Called every time a move completes — even if the next starts in the same frame
+  function onPlayerArrive() {
+    if (player.tileX === lastPlayerTile.x && player.tileY === lastPlayerTile.y) return;
+    lastPlayerTile = { x: player.tileX, y: player.tileY };
+    decayVision();
+    markExplored(player.tileX, player.tileY, VISION_RADIUS);
+    revealAroundTorches();
+    updateHUD(true);
+  }
+
+  // Check orb pickup every frame using interpolated position
+  function checkOrbPickup() {
+    if (gameOver || win || paused) return;
+    const { px, py } = playerPixel();
+    for (const o of energyOrbs) {
+      if (!o.alive) continue;
+      const ox = o.tileX * TILE + TILE / 2;
+      const oy = o.tileY * TILE + TILE / 2;
+      const dx = ox - px;
+      const dy = oy - py;
+      if (dx * dx + dy * dy < ORB_PICKUP_DIST * ORB_PICKUP_DIST) {
+        // ---- Orb refills the WHOLE bar ----
+        o.alive = false;
+        o.respawnTime = 12000;
+        energy = ORB_FULL_REFILL;
+        beep(880, 0.12, 'square', 0.08);
+        spawnParticles(ox, oy, '#ffe066', 30, 5, 800);
+        spawnParticles(ox, oy, '#aaff55', 20, 4, 700);
+        updateHUD(true);
+        messageEl.textContent = '⚡ ENERGY FULL';
+        setTimeout(() => { if (!gameOver && !win) messageEl.textContent = ''; }, 700);
+      }
+    }
+  }
+
+  function updatePlayer(dt, now) {
+    player.torchPhase += dt * 0.006;
+    player.bob += dt * 0.02;
+
+    for (let i = breadcrumbs.length - 1; i >= 0; i--) {
+      breadcrumbs[i].life -= dt;
+      if (breadcrumbs[i].life <= 0) breadcrumbs.splice(i, 1);
+    }
+
+    if (player.moving) {
+      const t = (now - player.moveStart) / player.moveDur;
+      if (t >= 1) {
+        player.moving = false;
+        player.fromX = player.tileX;
+        player.fromY = player.tileY;
+        // Fire arrival logic even if we immediately start the next move
+        onPlayerArrive();
+      }
+    }
+
+    if (!player.moving && !gameOver && !win && !paused) {
+      // Sprint key state (free, always available)
+      player.sprinting = !!(keys['Shift'] || keys['shift']);
+      if (keys['ArrowUp'] || keys['w']) tryMove(0, -1, 'up', now);
+      else if (keys['ArrowDown'] || keys['s']) tryMove(0, 1, 'down', now);
+      else if (keys['ArrowLeft'] || keys['a']) tryMove(-1, 0, 'left', now);
+      else if (keys['ArrowRight'] || keys['d']) tryMove(1, 0, 'right', now);
+    }
+
+    // Orb pickup every frame (works while running/sprinting through orbs)
+    checkOrbPickup();
+  }
+
+  function playerPixel() {
+    if (!player.moving) {
+      return { px: player.tileX * TILE + TILE / 2, py: player.tileY * TILE + TILE / 2 };
+    }
+    const t = Math.min(1, (performance.now() - player.moveStart) / player.moveDur);
+    const e = easeInOut(t);
+    const px = lerp(player.fromX, player.toX, e) * TILE + TILE / 2;
+    const py = lerp(player.fromY, player.toY, e) * TILE + TILE / 2;
+    return { px, py };
+  }
+
+  // ============================================================
+  //  SECTION 14 — PROTON STREAM
+  // ============================================================
+  function updateProtonStream(dt, now) {
+    const dtSec = dt / 1000;
+    stream.firing = !!keys[' '] && !gameOver && !win && !paused;
+
+    if (stream.firing) {
+      if (!beamOsc) startBeamSound();
+    } else {
+      stopBeamSound();
+    }
+
+    // Reset target each frame; pick fresh below
+    stream.targetGhost = null;
+    stream.hitX = 0; stream.hitY = 0;
+
+    // Find a target only if firing with energy
+    let best = null, bestDist = Infinity;
+    if (stream.firing && energy > 0) {
+      const ppx = player.tileX + 0.5;
+      const ppy = player.tileY + 0.5;
+      for (const g of ghosts) {
+        if (!g.alive) continue;
+        const gx = g.tileX + 0.5;
+        const gy = g.tileY + 0.5;
+        const d = Math.hypot(gx - ppx, gy - ppy);
+        if (d > STREAM_RANGE_TILES) continue;
+        if (!hasLineOfSight(player.tileX, player.tileY, g.tileX, g.tileY)) continue;
+        if (d < bestDist) { bestDist = d; best = g; }
+      }
+    }
+
+    // Turn OFF beingStreamed on every ghost that is not the current target.
+    // Crucially, we do NOT touch streamProgress — it only ever goes up.
+    for (const g of ghosts) {
+      if (g !== best) g.beingStreamed = false;
+    }
+
+    if (!best) {
+      // No target this frame — just stop the beam visually
+      return;
+    }
+
+    // We have a target
+    stream.targetGhost = best;
+    best.beingStreamed = true;
+
+    // Alert nearby ghosts
+    for (const g of ghosts) {
+      if (g === best) continue;
+      const d = Math.hypot(g.tileX - best.tileX, g.tileY - best.tileY);
+      if (d < 6) g.alertUntil = now + 2500;
+    }
+
+    const { px, py } = playerPixel();
+    stream.hitX = best.tileX * TILE + TILE / 2;
+    stream.hitY = best.tileY * TILE + TILE / 2;
+
+    const dx = best.tileX - player.tileX;
+    const dy = best.tileY - player.tileY;
+    if (Math.abs(dx) > Math.abs(dy)) player.facing = dx > 0 ? 'right' : 'left';
+    else player.facing = dy > 0 ? 'down' : 'up';
+
+    // Drain energy while the beam is actually hitting
+    energy = Math.max(0, energy - STREAM_DRAIN_PER_SEC * dtSec);
+    updateHUD(false);
+
+    // ---- streamProgress ONLY INCREASES ----
+    // No decay, no reset, no per-target clearing.
+    best.streamProgress += dtSec / STREAM_CAPTURE_TIME;
+    best.hitFlash = 1;
+
+    // Sparks
+    for (let i = 0; i < 2; i++) {
+      const t = Math.random();
+      stream.sparks.push({
+        x: lerp(px, stream.hitX, t) + (Math.random() - 0.5) * 6,
+        y: lerp(py, stream.hitY, t) + (Math.random() - 0.5) * 6,
+        life: 220 + Math.random() * 160,
+        maxLife: 380,
+        vx: (Math.random() - 0.5) * 0.8,
+        vy: (Math.random() - 0.5) * 0.8
+      });
+    }
+
+    // Capture check
+    if (best.streamProgress >= 1) {
+      best.alive = false;
+      best.beingStreamed = false;
+      energy = Math.max(0, energy - TRAP_COST);
+      beep(660, 0.2, 'triangle', 0.1);
+      spawnParticles(best.tileX * TILE + TILE / 2, best.tileY * TILE + TILE / 2, '#7dff8a', 40, 6, 900);
+      spawnParticles(best.tileX * TILE + TILE / 2, best.tileY * TILE + TILE / 2, '#ffffff', 20, 4, 700);
+      spawnParticles(best.tileX * TILE + TILE / 2, best.tileY * TILE + TILE / 2, '#33ffaa', 26, 5, 800);
+      camera.shakeAmount = 6;
+      updateHUD(true);
+
+      if (ghosts.every(g => !g.alive)) {
+        win = true; gameOver = true;
+        stopBeamSound();
+        beep(880, 0.5, 'triangle', 0.12);
+        messageEl.textContent = '🏆 ALL SPECTRES TRAPPED!';
+        if (runTimeMs < bestTimeMs) bestTimeMs = runTimeMs;
+      } else {
+        messageEl.textContent = '✅ SPECTRE CAPTURED!';
+        setTimeout(() => { if (!gameOver && !win) messageEl.textContent = ''; }, 700);
+      }
+      stream.targetGhost = null;
+    }
+  }
+
+  function updateStreamSparks(dt) {
+    for (let i = stream.sparks.length - 1; i >= 0; i--) {
+      const s = stream.sparks[i];
+      s.x += s.vx;
+      s.y += s.vy;
+      s.life -= dt;
+      if (s.life <= 0) stream.sparks.splice(i, 1);
+    }
+  }
+
+  // ============================================================
+  //  SECTION 15 — HELPERS
+  // ============================================================
+  function isWall(x, y) {
+    if (x < 0 || x >= COLS || y < 0 || y >= ROWS) return true;
+    return maze[y][x] === WALL;
+  }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function easeInOut(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+  function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+  function spawnParticles(px, py, color, count, speed, life) {
+    for (let i = 0; i < count; i++) {
+      const ang = Math.random() * Math.PI * 2;
+      const sp = Math.random() * speed;
+      particles.push({
+        x: px, y: py,
+        vx: Math.cos(ang) * sp,
+        vy: Math.sin(ang) * sp,
+        life: life, maxLife: life,
+        color, size: 2 + Math.random() * 4
+      });
+    }
+  }
+
+  // ============================================================
+  //  SECTION 16 — RESET
+  // ============================================================
+  function resetGame() {
+    gameOver = false;
+    win = false;
+    paused = false;
+    energy = 100;
+    particles = [];
+    breadcrumbs = [];
+    stream.sparks = [];
+    stream.firing = false;
+    stream.targetGhost = null;
+    stopBeamSound();
+
+    player.tileX = 1; player.tileY = 1;
+    player.fromX = 1; player.fromY = 1;
+    player.toX = 1;   player.toY = 1;
+    player.moving = false;
+    player.facing = 'down';
+    player.sprinting = false;
+    player.hp = MAX_HP;
+    player.invulnUntil = 0;
+
+    for (let y = 0; y < ROWS; y++)
+      for (let x = 0; x < COLS; x++)
+        explored[y][x] = 0;
+
+    resetGhosts();
+    placeTorches();
+    revealAroundTorches();
+    spawnEctoplasmDrips();
+    spawnEmbers();
+    spawnFogPatches();
+    spawnEnergyOrbs();
+    recountFloorTiles();
+
+    messageEl.textContent = '';
+    updateHUD(true);
+    updateHPUI();
+    runTimeMs = 0;
+    timerEl.textContent = '00:00';
+    lastFrame = performance.now();
+    lastPlayerTile = { x: 1, y: 1 };
+
+    const { px, py } = playerPixel();
+    camera.x = px - VIEW_W / 2;
+    camera.y = py - VIEW_H / 2;
+    camera.targetX = camera.x;
+    camera.targetY = camera.y;
+    camera.shakeAmount = 0;
+
+    markExplored(1, 1, VISION_RADIUS);
+    revealAroundTorches();
+    updateHUD(true);
+  }
+
+  let hudCache = { energy: -1, ghosts: -1, explore: -1 };
+  function updateHUD(force) {
+    const pct = Math.round(clamp(energy, 0, 100));
+    if (force || pct !== hudCache.energy) {
+      hudCache.energy = pct;
+      energyFill.style.width = pct + '%';
+      if (pct > 60) energyFill.style.background = 'linear-gradient(90deg, #35e06a, #a8ff3d)';
+      else if (pct > 25) energyFill.style.background = 'linear-gradient(90deg, #f2c53d, #f2e33d)';
+      else energyFill.style.background = 'linear-gradient(90deg, #f23d3d, #f27b3d)';
+    }
+    const alive = ghosts.filter(g => g.alive).length;
+    if (force || alive !== hudCache.ghosts) {
+      hudCache.ghosts = alive;
+      ghostCountEl.textContent = `${alive} / ${ghosts.length}`;
+    }
+    const explore = exploredPercent();
+    if (force || explore !== hudCache.explore) {
+      hudCache.explore = explore;
+      exploreCountEl.textContent = explore + '%';
+    }
+  }
+
+  function updateHPUI() {
+    const pips = hpPipsEl.querySelectorAll('.hp-pip');
+    pips.forEach((p, i) => {
+      if (i < player.hp) p.classList.remove('empty');
+      else p.classList.add('empty');
+    });
+  }
+
+  // ============================================================
+  //  SECTION 17 — CAMERA
+  // ============================================================
+  function updateCamera() {
+    const { px, py } = playerPixel();
+    camera.targetX = px - VIEW_W / 2;
+    camera.targetY = py - VIEW_H / 2;
+    camera.x = lerp(camera.x, camera.targetX, 0.14);
+    camera.y = lerp(camera.y, camera.targetY, 0.14);
+    camera.x = clamp(camera.x, 0, COLS * TILE - VIEW_W);
+    camera.y = clamp(camera.y, 0, ROWS * TILE - VIEW_H);
+
+    if (camera.shakeAmount > 0) {
+      camera.shakeX = (Math.random() - 0.5) * camera.shakeAmount;
+      camera.shakeY = (Math.random() - 0.5) * camera.shakeAmount;
+      camera.shakeAmount *= 0.9;
+      if (camera.shakeAmount < 0.2) camera.shakeAmount = 0;
+    } else {
+      camera.shakeX = 0; camera.shakeY = 0;
+    }
+  }
+
+  // ============================================================
+  //  SECTION 18 — UPDATE
+  // ============================================================
+  function update(dt, now) {
+    if (paused || !started) return;
+
+    time += dt;
+
+    if (!gameOver && !win) {
+      runTimeMs += dt;
+      const secs = Math.floor(runTimeMs / 1000);
+      const mm = String(Math.floor(secs / 60)).padStart(2, '0');
+      const ss = String(secs % 60).padStart(2, '0');
+      const label = mm + ':' + ss + (bestTimeMs !== Infinity ? '  (best ' + formatTime(bestTimeMs) + ')' : '');
+      timerEl.textContent = label;
+    }
+
+    // Energy: slow idle regen only. No walking/sprint drain.
+    if (!gameOver && !win) {
+      if (!player.moving) {
+        energy = Math.min(100, energy + ENERGY_REGEN * (dt / 16.67));
+        updateHUD(false);
+      }
+    }
+
+    // Orb respawn
+    for (const o of energyOrbs) {
+      if (!o.alive) {
+        o.respawnTime -= dt;
+        if (o.respawnTime <= 0) {
+          o.alive = true;
+          for (let tries = 0; tries < 200; tries++) {
+            const x = 1 + Math.floor(Math.random() * (COLS - 2));
+            const y = 1 + Math.floor(Math.random() * (ROWS - 2));
+            if (maze[y][x] === FLOOR && Math.hypot(x - player.tileX, y - player.tileY) > 4) {
+              o.tileX = x; o.tileY = y;
+              break;
+            }
+          }
+        }
+      }
+      o.phase += dt * 0.004;
+    }
+
+    updatePlayer(dt, now);
+    updateProtonStream(dt, now);
+    updateStreamSparks(dt);
+    updateGhosts(now);
+    checkGhostCollisions(now);
+    updateCamera();
+
+    for (const g of ghosts) {
+      if (g.alive) g.bob += dt * 0.004;
+    }
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i];
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += 0.08;
+      p.vx *= 0.98;
+      p.life -= dt;
+      if (p.life <= 0) particles.splice(i, 1);
+    }
+
+    for (const t of torchLights) t.phase += dt * 0.008 * t.speed;
+    for (const d of ectoplasmDrips) d.phase += dt * 0.004 * d.speed;
+    for (const e of floatingEmbers) {
+      e.x += e.vx; e.y += e.vy;
+      e.phase += dt * 0.005 * e.speed;
+    }
+    for (const f of fogPatches) {
+      f.x += f.vx; f.y += f.vy;
+      f.phase += dt * 0.002 * f.speed;
+    }
+  }
+
+  function formatTime(ms) {
+    const secs = Math.floor(ms / 1000);
+    const mm = String(Math.floor(secs / 60)).padStart(2, '0');
+    const ss = String(secs % 60).padStart(2, '0');
+    return mm + ':' + ss;
+  }
+
+  // ============================================================
+  //  SECTION 19 — RENDERING (wall/floor use sprites)
+  // ============================================================
+  function drawWall(wx, wy, tileX, tileY) {
+    const idx = ((tileX * 31 + tileY * 17) >>> 0) % WALL_VARIANTS;
+    ctx.drawImage(wallSprites[idx], wx, wy);
+  }
+  function drawFloor(wx, wy, tileX, tileY) {
+    const idx = ((tileX * 19 + tileY * 13) >>> 0) % FLOOR_VARIANTS;
+    ctx.drawImage(floorSprites[idx], wx, wy);
+  }
+
+  // ============================================================
+  //  SECTION 20 — ENERGY ORB
+  // ============================================================
+  function drawEnergyOrb(o, sx, sy) {
+    if (!o.alive) return;
+    const pulse = Math.sin(o.phase * 3) * 0.35 + 1;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const halo = ctx.createRadialGradient(sx, sy, 0, sx, sy, 26 * pulse);
+    halo.addColorStop(0, 'rgba(255, 255, 200, 0.95)');
+    halo.addColorStop(0.25, 'rgba(255, 230, 90, 0.7)');
+    halo.addColorStop(0.6, 'rgba(255, 180, 40, 0.35)');
+    halo.addColorStop(1, 'rgba(255, 140, 0, 0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 26 * pulse, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgba(255, 240, 140, 0.9)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 10 * pulse, 0, Math.PI * 2);
+    ctx.stroke();
+
+    const coreGrad = ctx.createRadialGradient(sx - 1, sy - 1, 0, sx, sy, 8 * pulse);
+    coreGrad.addColorStop(0, '#ffffff');
+    coreGrad.addColorStop(0.4, '#fff6b0');
+    coreGrad.addColorStop(1, '#ffb020');
+    ctx.fillStyle = coreGrad;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 8 * pulse, 0, Math.PI * 2);
+    ctx.fill();
+
+    for (let i = 0; i < 4; i++) {
+      const a = o.phase * 2 + i * (Math.PI / 2);
+      const r = 14 + Math.sin(o.phase * 5 + i) * 2;
+      const px = sx + Math.cos(a) * r;
+      const py = sy + Math.sin(a) * r;
+      ctx.fillStyle = 'rgba(255, 250, 200, 0.9)';
+      ctx.fillRect(Math.round(px) - 1, Math.round(py) - 1, 3, 3);
+    }
+    ctx.restore();
+  }
+
+  // ============================================================
+  //  SECTION 21 — GHOST SPRITES
+  // ============================================================
+  const ART = 3;
+
+  function drawPixelBlock(cx, cy, col, row, color, blockSize) {
+    ctx.fillStyle = color;
+    ctx.fillRect(cx + col * blockSize, cy + row * blockSize, blockSize, blockSize);
+  }
+
+  function drawGloop(cx, cy, g) {
+    const b = ART;
+    const ox = cx - 6 * b, oy = cy - 5 * b;
+    const outline = '#1a3a08', body = '#7ad62e', bodyLight = '#a4e84c', bodyDark = '#4a9a1c';
+    const eyeW = '#ffffff', eyeB = '#0a0a0a', mouth = '#3a1a1a', tongue = '#cc4477';
+
+    const outlineMap = [
+      [0,0,0,0,1,1,1,1,0,0,0,0],
+      [0,0,1,1,1,1,1,1,1,1,0,0],
+      [0,1,1,1,1,1,1,1,1,1,1,0],
+      [0,1,1,1,1,1,1,1,1,1,1,0],
+      [1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1],
+      [0,1,1,1,1,1,1,1,1,1,1,0],
+      [0,1,1,1,1,1,1,1,1,1,1,0],
+      [0,0,1,1,0,1,1,0,1,1,0,0],
+      [0,0,0,0,0,0,0,0,0,0,0,0]
+    ];
+    for (let r = 0; r < outlineMap.length; r++)
+      for (let c = 0; c < outlineMap[r].length; c++)
+        if (outlineMap[r][c]) drawPixelBlock(ox, oy, c, r, outline, b);
+
+    const bodyMap = [
+      [0,0,0,0,1,1,1,1,0,0,0,0],
+      [0,0,1,1,1,1,1,1,1,1,0,0],
+      [0,1,1,1,1,1,1,1,1,1,1,0],
+      [0,1,1,1,1,1,1,1,1,1,1,0],
+      [1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1],
+      [0,1,1,1,1,1,1,1,1,1,1,0],
+      [0,1,1,1,1,1,1,1,1,1,1,0],
+      [0,0,1,1,0,0,0,0,1,1,0,0],
+      [0,0,0,0,0,0,0,0,0,0,0,0]
+    ];
+    for (let r = 0; r < bodyMap.length; r++) {
+      for (let c = 0; c < bodyMap[r].length; c++) {
+        if (!bodyMap[r][c]) continue;
+        let color = body;
+        if (r === 1 && c >= 5 && c <= 7) color = bodyLight;
+        if (r >= 2 && c >= 2 && c <= 4) color = bodyLight;
+        if (r >= 5 && c >= 8) color = bodyDark;
+        if (r >= 6) color = bodyDark;
+        drawPixelBlock(ox, oy, c, r, color, b);
+      }
+    }
+
+    drawPixelBlock(ox, oy, 3, 3, eyeW, b);
+    drawPixelBlock(ox, oy, 4, 3, eyeW, b);
+    drawPixelBlock(ox, oy, 7, 3, eyeW, b);
+    drawPixelBlock(ox, oy, 8, 3, eyeW, b);
+    drawPixelBlock(ox, oy, 3, 4, eyeW, b);
+    drawPixelBlock(ox, oy, 4, 4, eyeW, b);
+    drawPixelBlock(ox, oy, 7, 4, eyeW, b);
+    drawPixelBlock(ox, oy, 8, 4, eyeW, b);
+    drawPixelBlock(ox, oy, 4, 4, eyeB, b);
+    drawPixelBlock(ox, oy, 7, 4, eyeB, b);
+
+    for (let c = 4; c <= 7; c++) drawPixelBlock(ox, oy, c, 5, mouth, b);
+    drawPixelBlock(ox, oy, 4, 6, mouth, b);
+    drawPixelBlock(ox, oy, 7, 6, mouth, b);
+    if (g.tongue) {
+      drawPixelBlock(ox, oy, 5, 6, tongue, b);
+      drawPixelBlock(ox, oy, 6, 6, tongue, b);
+    }
+    drawPixelBlock(ox, oy, 2, 8, bodyDark, b);
+    drawPixelBlock(ox, oy, 9, 8, bodyDark, b);
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const gl = ctx.createRadialGradient(cx, cy, 0, cx, cy, 42);
+    gl.addColorStop(0, 'rgba(180, 255, 130, 0.18)');
+    gl.addColorStop(1, 'rgba(180, 255, 130, 0)');
+    ctx.fillStyle = gl;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 42, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawShade(cx, cy, g) {
+    const b = ART;
+    const ox = cx - 7 * b, oy = cy - 6 * b;
+    const outline = '#4a5a80', bodyW = '#ffffff', bodyShade = '#d8e4f5', bodyShadow = '#b0c0dc', eyes = '#0a0a0a';
+
+    const bodyMap = [
+      [0,0,0,1,1,1,1,1,1,1,1,0,0,0],
+      [0,0,1,1,1,1,1,1,1,1,1,1,0,0],
+      [0,1,1,1,1,1,1,1,1,1,1,1,1,0],
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+      [0,1,1,1,1,1,1,1,1,1,1,1,1,0],
+      [0,1,1,1,0,0,1,1,0,0,1,1,1,0],
+      [0,0,1,1,0,0,1,1,0,0,1,1,0,0],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+    ];
+
+    for (let r = 0; r < bodyMap.length; r++) {
+      for (let c = 0; c < bodyMap[r].length; c++) {
+        if (!bodyMap[r][c]) continue;
+        let color = bodyW;
+        if (c >= 8) color = bodyShade;
+        if (c >= 11) color = bodyShadow;
+        if (r >= 6 && r <= 8 && c >= 8) color = bodyShadow;
+        drawPixelBlock(ox, oy, c, r, color, b);
+      }
+    }
+
+    for (let r = 0; r < bodyMap.length; r++) {
+      for (let c = 0; c < bodyMap[r].length; c++) {
+        if (bodyMap[r][c]) continue;
+        const neighbors = [
+          bodyMap[r-1]?.[c], bodyMap[r+1]?.[c],
+          bodyMap[r]?.[c-1], bodyMap[r]?.[c+1]
+        ];
+        if (neighbors.some(n => n === 1)) drawPixelBlock(ox, oy, c, r, outline, b);
+      }
+    }
+
+    drawPixelBlock(ox, oy, 4, 4, eyes, b);
+    drawPixelBlock(ox, oy, 9, 4, eyes, b);
+    drawPixelBlock(ox, oy, 4, 5, eyes, b);
+    drawPixelBlock(ox, oy, 9, 5, eyes, b);
+    drawPixelBlock(ox, oy, 4, 4, '#ffffff', b);
+    drawPixelBlock(ox, oy, 9, 4, '#ffffff', b);
+    for (let c = 6; c <= 7; c++) {
+      drawPixelBlock(ox, oy, c, 6, eyes, b);
+      drawPixelBlock(ox, oy, c, 7, eyes, b);
+    }
+    drawPixelBlock(ox, oy, 5, 6, eyes, b);
+    drawPixelBlock(ox, oy, 8, 6, eyes, b);
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const gl = ctx.createRadialGradient(cx, cy, 0, cx, cy, 44);
+    gl.addColorStop(0, 'rgba(220, 240, 255, 0.20)');
+    gl.addColorStop(1, 'rgba(220, 240, 255, 0)');
+    ctx.fillStyle = gl;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 44, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawWraith(cx, cy, g) {
+    const b = ART;
+    const ox = cx - 7 * b, oy = cy - 6 * b;
+    const outline = '#3a0a10', body = '#a82a3a', bodyShade = '#6a1a28', bodyDark = '#4a0a1a';
+    const eyeGlow = '#ff3300', eyeCore = '#ffee00', teeth = '#ffe8c0';
+
+    const bodyMap = [
+      [0,0,1,1,1,1,1,1,1,1,1,1,0,0],
+      [0,1,1,1,1,1,1,1,1,1,1,1,1,0],
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+      [0,1,1,1,1,1,1,1,1,1,1,1,1,0],
+      [0,1,1,0,1,1,0,0,1,1,0,1,0,0],
+      [0,0,1,0,0,1,0,0,1,0,0,1,0,0],
+      [0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+    ];
+
+    for (let r = 0; r < bodyMap.length; r++) {
+      for (let c = 0; c < bodyMap[r].length; c++) {
+        if (!bodyMap[r][c]) continue;
+        let color = body;
+        if (c >= 9) color = bodyShade;
+        if (c >= 11) color = bodyDark;
+        if (r >= 7) color = bodyShade;
+        drawPixelBlock(ox, oy, c, r, color, b);
+      }
+    }
+
+    for (let r = 0; r < bodyMap.length; r++) {
+      for (let c = 0; c < bodyMap[r].length; c++) {
+        if (bodyMap[r][c]) continue;
+        const neighbors = [
+          bodyMap[r-1]?.[c], bodyMap[r+1]?.[c],
+          bodyMap[r]?.[c-1], bodyMap[r]?.[c+1]
+        ];
+        if (neighbors.some(n => n === 1)) drawPixelBlock(ox, oy, c, r, outline, b);
+      }
+    }
+
+    drawPixelBlock(ox, oy, 3, 3, eyeGlow, b);
+    drawPixelBlock(ox, oy, 4, 3, eyeGlow, b);
+    drawPixelBlock(ox, oy, 5, 3, eyeGlow, b);
+    drawPixelBlock(ox, oy, 3, 4, eyeGlow, b);
+    drawPixelBlock(ox, oy, 4, 4, eyeGlow, b);
+    drawPixelBlock(ox, oy, 3, 5, eyeGlow, b);
+    drawPixelBlock(ox, oy, 8, 3, eyeGlow, b);
+    drawPixelBlock(ox, oy, 9, 3, eyeGlow, b);
+    drawPixelBlock(ox, oy, 10, 3, eyeGlow, b);
+    drawPixelBlock(ox, oy, 9, 4, eyeGlow, b);
+    drawPixelBlock(ox, oy, 10, 4, eyeGlow, b);
+    drawPixelBlock(ox, oy, 10, 5, eyeGlow, b);
+    drawPixelBlock(ox, oy, 4, 4, eyeCore, b);
+    drawPixelBlock(ox, oy, 9, 4, eyeCore, b);
+
+    for (let c = 5; c <= 8; c++) drawPixelBlock(ox, oy, c, 7, '#0a0000', b);
+    drawPixelBlock(ox, oy, 4, 7, '#0a0000', b);
+    drawPixelBlock(ox, oy, 9, 7, '#0a0000', b);
+    for (let c = 5; c <= 8; c += 1) {
+      if (c % 2 === 1) drawPixelBlock(ox, oy, c, 7, teeth, b);
+    }
+    drawPixelBlock(ox, oy, 5, 8, teeth, b);
+    drawPixelBlock(ox, oy, 8, 8, teeth, b);
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const gl = ctx.createRadialGradient(cx, cy, 0, cx, cy, 46);
+    gl.addColorStop(0, 'rgba(255, 100, 130, 0.24)');
+    gl.addColorStop(1, 'rgba(255, 100, 130, 0)');
+    ctx.fillStyle = gl;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 46, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawSpectre(cx, cy, g) {
+    const b = ART;
+    const ox = cx - 6 * b, oy = cy - 6 * b;
+    const outline = '#4a5a80', body = '#e8f2ff', bodyShade = '#b8c8e0';
+    const hair = '#5a4a3a', glasses = '#3a3a4a', eyes = '#0a0a0a';
+
+    const bodyMap = [
+      [0,0,0,1,1,1,1,1,1,0,0,0],
+      [0,0,1,1,1,1,1,1,1,1,0,0],
+      [0,1,1,1,1,1,1,1,1,1,1,0],
+      [0,1,1,1,1,1,1,1,1,1,1,0],
+      [1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1],
+      [0,1,1,1,1,1,1,1,1,1,1,0],
+      [0,1,1,0,1,1,1,1,0,1,1,0],
+      [0,0,1,0,0,1,1,0,0,1,0,0],
+      [0,0,0,0,0,0,0,0,0,0,0,0]
+    ];
+
+    for (let r = 0; r < bodyMap.length; r++) {
+      for (let c = 0; c < bodyMap[r].length; c++) {
+        if (!bodyMap[r][c]) continue;
+        let color = body;
+        if (c >= 8) color = bodyShade;
+        if (r >= 7) color = bodyShade;
+        drawPixelBlock(ox, oy, c, r, color, b);
+      }
+    }
+
+    for (let r = 0; r < bodyMap.length; r++) {
+      for (let c = 0; c < bodyMap[r].length; c++) {
+        if (bodyMap[r][c]) continue;
+        const neighbors = [
+          bodyMap[r-1]?.[c], bodyMap[r+1]?.[c],
+          bodyMap[r]?.[c-1], bodyMap[r]?.[c+1]
+        ];
+        if (neighbors.some(n => n === 1)) drawPixelBlock(ox, oy, c, r, outline, b);
+      }
+    }
+
+    drawPixelBlock(ox, oy, 5, 0, hair, b);
+    drawPixelBlock(ox, oy, 6, 0, hair, b);
+    drawPixelBlock(ox, oy, 5, 1, hair, b);
+    drawPixelBlock(ox, oy, 6, 1, hair, b);
+
+    drawPixelBlock(ox, oy, 2, 4, glasses, b);
+    drawPixelBlock(ox, oy, 3, 4, glasses, b);
+    drawPixelBlock(ox, oy, 2, 5, glasses, b);
+    drawPixelBlock(ox, oy, 3, 5, glasses, b);
+    drawPixelBlock(ox, oy, 8, 4, glasses, b);
+    drawPixelBlock(ox, oy, 9, 4, glasses, b);
+    drawPixelBlock(ox, oy, 8, 5, glasses, b);
+    drawPixelBlock(ox, oy, 9, 5, glasses, b);
+    drawPixelBlock(ox, oy, 4, 4, glasses, b);
+    drawPixelBlock(ox, oy, 5, 4, glasses, b);
+    drawPixelBlock(ox, oy, 6, 4, glasses, b);
+    drawPixelBlock(ox, oy, 7, 4, glasses, b);
+    drawPixelBlock(ox, oy, 3, 5, eyes, b);
+    drawPixelBlock(ox, oy, 8, 5, eyes, b);
+    drawPixelBlock(ox, oy, 5, 7, '#3a2a3a', b);
+    drawPixelBlock(ox, oy, 6, 7, '#3a2a3a', b);
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const gl = ctx.createRadialGradient(cx, cy, 0, cx, cy, 40);
+    gl.addColorStop(0, 'rgba(180, 220, 255, 0.20)');
+    gl.addColorStop(1, 'rgba(180, 220, 255, 0)');
+    ctx.fillStyle = gl;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 40, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawGhost(g, sx, sy) {
+    const bob = Math.sin(g.bob) * 3;
+    const cx = sx;
+    const cy = sy + bob;
+
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.beginPath();
+    ctx.ellipse(cx, sy + 14, 12, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // ---- Progress ring: drawn whenever streamProgress > 0 ----
+    // Persists even after releasing fire, switching targets, or running out of range.
+    if (g.streamProgress > 0) {
+      ctx.save();
+      ctx.globalAlpha = 0.95;
+      ctx.strokeStyle = '#88e0ff';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 26, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, g.streamProgress));
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 28, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, g.streamProgress));
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    if (g.hitFlash > 0.3) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = `rgba(180, 220, 255, ${g.hitFlash * 0.35})`;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 22, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    switch (g.type) {
+      case 'gloop':   drawGloop(cx, cy, g); break;
+      case 'shade':   drawShade(cx, cy, g); break;
+      case 'wraith':  drawWraith(cx, cy, g); break;
+      case 'spectre': drawSpectre(cx, cy, g); break;
+    }
+  }
+
+  // ============================================================
+  //  SECTION 22 — PLAYER
+  // ============================================================
+  function drawPlayer(px, py, facing, moving, now) {
+    const bob = moving ? Math.sin(time * 0.03) * 1.5 : Math.sin(time * 0.005) * 0.8;
+    const drawY = py + bob;
+
+    const invuln = now < player.invulnUntil;
+    if (invuln && Math.floor(now / 100) % 2 === 0) return;
+
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.beginPath();
+    ctx.ellipse(px, py + 14, 12, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const packX = facing === 'left' ? px + 5 : facing === 'right' ? px - 5 : px;
+    const packY = drawY - 4;
+    ctx.fillStyle = '#4a5a78';
+    ctx.fillRect(packX - 7, packY - 8, 14, 18);
+    ctx.fillStyle = '#6a7a98';
+    ctx.fillRect(packX - 7, packY - 8, 14, 3);
+    ctx.fillStyle = '#2a3a58';
+    ctx.fillRect(packX - 7, packY + 7, 14, 3);
+    ctx.fillStyle = '#e8b820';
+    ctx.fillRect(packX - 5, packY - 6, 3, 2);
+    ctx.fillStyle = '#e83848';
+    ctx.fillRect(packX + 4, packY - 5, 2, 2);
+    ctx.fillStyle = '#33e858';
+    ctx.fillRect(packX + 4, packY - 1, 2, 2);
+    ctx.fillStyle = '#e8b820';
+    ctx.fillRect(packX + 4, packY + 3, 2, 2);
+
+    ctx.fillStyle = '#c8a45a';
+    ctx.fillRect(px - 7, drawY - 6, 14, 14);
+    ctx.fillStyle = '#a8843a';
+    ctx.fillRect(px + 3, drawY - 6, 4, 14);
+    ctx.fillStyle = '#8a6a28';
+    ctx.fillRect(px - 7, drawY + 4, 14, 3);
+
+    ctx.fillStyle = '#2a2a3a';
+    ctx.fillRect(px - 7, drawY + 1, 14, 2);
+    ctx.fillStyle = '#ffcc33';
+    ctx.fillRect(px - 2, drawY + 1, 3, 2);
+
+    ctx.fillStyle = '#cc2222';
+    ctx.beginPath();
+    ctx.arc(px - 4, drawY - 2, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(px - 5, drawY - 3, 2, 2);
+
+    ctx.fillStyle = '#f0c89a';
+    ctx.fillRect(px - 5, drawY - 14, 10, 9);
+    ctx.fillStyle = '#d4a878';
+    ctx.fillRect(px + 2, drawY - 14, 3, 9);
+    ctx.fillStyle = '#5a3a20';
+    ctx.fillRect(px - 5, drawY - 15, 10, 3);
+
+    ctx.fillStyle = '#1a1a2a';
+    if (facing === 'down') {
+      ctx.fillRect(px - 3, drawY - 10, 2, 2);
+      ctx.fillRect(px + 1, drawY - 10, 2, 2);
+    } else if (facing === 'left') {
+      ctx.fillRect(px - 4, drawY - 10, 2, 2);
+    } else if (facing === 'right') {
+      ctx.fillRect(px + 2, drawY - 10, 2, 2);
+    }
+  }
+
+  function drawProtonWand(px, py, facing) {
+    const bob = player.moving ? Math.sin(time * 0.03) * 1.5 : Math.sin(time * 0.005) * 0.8;
+    const drawY = py + bob;
+
+    let wandTipX = px, wandTipY = drawY;
+    let wandBaseX = px, wandBaseY = drawY;
+    if (facing === 'left')  { wandBaseX = px - 6;  wandBaseY = drawY - 2;  wandTipX = px - 18; wandTipY = drawY - 4; }
+    if (facing === 'right') { wandBaseX = px + 6;  wandBaseY = drawY - 2;  wandTipX = px + 18; wandTipY = drawY - 4; }
+    if (facing === 'up')    { wandBaseX = px + 4;  wandBaseY = drawY - 6;  wandTipX = px + 8;  wandTipY = drawY - 20; }
+    if (facing === 'down')  { wandBaseX = px + 4;  wandBaseY = drawY + 4;  wandTipX = px + 8;  wandTipY = drawY + 18; }
+
+    ctx.save();
+    ctx.shadowColor = '#aaccff';
+    ctx.shadowBlur = 14;
+    ctx.fillStyle = '#3a3a4a';
+    ctx.fillRect(wandBaseX - 2, wandBaseY - 2, 5, 4);
+    ctx.fillStyle = '#c8c8d8';
+    ctx.fillRect(wandTipX - 2, wandTipY - 1, 5, 2);
+    ctx.fillStyle = '#ffe066';
+    ctx.fillRect(wandTipX - 1, wandTipY - 2, 3, 3);
+    ctx.fillStyle = '#e8b820';
+    ctx.fillRect(wandBaseX + 1, wandBaseY - 2, 1, 4);
+    ctx.restore();
+  }
+
+  // ============================================================
+  //  SECTION 23 — PROTON BEAM
+  // ============================================================
+  function drawProtonBeam(camX, camY) {
+    if (!stream.firing || !stream.targetGhost || !stream.targetGhost.alive) return;
+    if (energy <= 0) return;
+
+    const { px, py } = playerPixel();
+    const bob = player.moving ? Math.sin(time * 0.03) * 1.5 : Math.sin(time * 0.005) * 0.8;
+    const drawY = py + bob;
+
+    let wandTipX = px, wandTipY = drawY;
+    if (player.facing === 'left')  { wandTipX = px - 18; wandTipY = drawY - 4; }
+    if (player.facing === 'right') { wandTipX = px + 18; wandTipY = drawY - 4; }
+    if (player.facing === 'up')    { wandTipX = px + 8;  wandTipY = drawY - 20; }
+    if (player.facing === 'down')  { wandTipX = px + 8;  wandTipY = drawY + 18; }
+
+    const targetX = stream.hitX;
+    const targetY = stream.hitY;
+
+    const sxStart = wandTipX - camX;
+    const syStart = wandTipY - camY;
+    const sxEnd = targetX - camX;
+    const syEnd = targetY - camY;
+
+    const dx = sxEnd - sxStart;
+    const dy = syEnd - syStart;
+    const len = Math.hypot(dx, dy);
+    if (len < 1) return;
+    const ux = dx / len;
+    const uy = dy / len;
+
+    const SEG_LEN = 4;
+    const SEG_W = 5;
+    const numSeg = Math.floor(len / SEG_LEN);
+
+    for (let i = 0; i < numSeg; i++) {
+      const t = i / numSeg;
+      const px_ = sxStart + ux * (i * SEG_LEN);
+      const py_ = syStart + uy * (i * SEG_LEN);
+      const wobble = Math.sin(time * 0.04 + i * 1.7) * 1.6;
+      const perpX = -uy * wobble;
+      const perpY = ux * wobble;
+
+      let color;
+      const phase = i % 3;
+      if (phase === 0) color = '#ffffff';
+      else if (phase === 1) color = '#a8e0ff';
+      else color = '#5a9aff';
+
+      ctx.fillStyle = color;
+      const bx = Math.round(px_ + perpX - SEG_W / 2);
+      const by = Math.round(py_ + perpY - SEG_W / 2);
+      ctx.fillRect(bx, by, SEG_W, SEG_W);
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.35 * (1 - t * 0.5);
+      ctx.fillStyle = '#80c0ff';
+      ctx.fillRect(bx - 2, by - 2, SEG_W + 4, SEG_W + 4);
+      ctx.restore();
+    }
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const impactR = 10 + Math.sin(time * 0.05) * 3;
+    const impact = ctx.createRadialGradient(sxEnd, syEnd, 0, sxEnd, syEnd, impactR);
+    impact.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+    impact.addColorStop(0.4, 'rgba(160, 220, 255, 0.5)');
+    impact.addColorStop(1, 'rgba(80, 160, 255, 0)');
+    ctx.fillStyle = impact;
+    ctx.beginPath();
+    ctx.arc(sxEnd, syEnd, impactR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    for (const s of stream.sparks) {
+      const sxs = s.x - camX;
+      const sys = s.y - camY;
+      const a = s.life / s.maxLife;
+      ctx.fillStyle = `rgba(220, 240, 255, ${a})`;
+      ctx.fillRect(Math.round(sxs), Math.round(sys), 2, 2);
+    }
+  }
+
+  // ============================================================
+  //  SECTION 24 — TORCH
+  // ============================================================
+  function drawTorch(t, sx, sy) {
+    const flick = Math.sin(t.phase * 3) * 0.5 + Math.sin(t.phase * 7.3) * 0.3;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = 0.85 + flick * 0.15;
+    ctx.drawImage(torchGlowCanvas, sx - 60, sy - 60, 120, 120);
+    ctx.restore();
+
+    ctx.fillStyle = '#2a1c0c';
+    ctx.fillRect(sx - 3, sy - 2, 6, 14);
+    ctx.fillStyle = '#160e04';
+    ctx.fillRect(sx - 3, sy + 10, 6, 2);
+    ctx.fillStyle = '#3a2a14';
+    ctx.fillRect(sx - 5, sy - 6, 10, 3);
+
+    ctx.fillStyle = '#ff8822';
+    ctx.beginPath();
+    ctx.arc(sx, sy - 10, 6 + flick, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffbb44';
+    ctx.beginPath();
+    ctx.arc(sx, sy - 11, 4 + flick * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fff4cc';
+    ctx.beginPath();
+    ctx.arc(sx, sy - 11, 2 + flick * 0.3, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // ============================================================
+  //  SECTION 25 — FOG & VIGNETTE
+  // ============================================================
+  function drawVisionVignette() {
+    const { px, py } = playerPixel();
+    const sx = px - camera.x + camera.shakeX;
+    const sy = py - camera.y + camera.shakeY;
+
+    const maxR = Math.max(VIEW_W, VIEW_H) * 0.82;
+    const grad = ctx.createRadialGradient(sx, sy, VISION_RADIUS * TILE * 0.7, sx, sy, maxR);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(0.6, 'rgba(0,0,0,0.22)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.82)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+    const warm = ctx.createRadialGradient(sx, sy, 4, sx, sy, VISION_RADIUS * TILE * 1.1);
+    warm.addColorStop(0, 'rgba(255,210,140,0.30)');
+    warm.addColorStop(0.5, 'rgba(255,180,90,0.12)');
+    warm.addColorStop(1, 'rgba(255,150,60,0)');
+    ctx.fillStyle = warm;
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+  }
+
+  // ============================================================
+  //  SECTION 26 — RENDER
+  // ============================================================
+  function render(now) {
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+
+    const camX = camera.x - camera.shakeX;
+    const camY = camera.y - camera.shakeY;
+
+    const startCol = Math.max(0, Math.floor(camX / TILE));
+    const startRow = Math.max(0, Math.floor(camY / TILE));
+    const endCol = Math.min(COLS - 1, startCol + Math.ceil(VIEW_W / TILE) + 1);
+    const endRow = Math.min(ROWS - 1, startRow + Math.ceil(VIEW_H / TILE) + 1);
+
+    for (let row = startRow; row <= endRow; row++) {
+      for (let col = startCol; col <= endCol; col++) {
+        if (row < 0 || row >= ROWS || col < 0 || col >= COLS) continue;
+        const st = explored[row][col];
+        if (st === 0) continue;
+        const wx = col * TILE - camX;
+        const wy = row * TILE - camY;
+        if (maze[row][col] === WALL) drawWall(wx, wy, col, row);
+        else drawFloor(wx, wy, col, row);
+      }
+    }
+
+    for (const b of breadcrumbs) {
+      const sx = b.x - camX;
+      const sy = b.y - camY;
+      const alpha = (b.life / b.maxLife) * 0.4;
+      const col = Math.floor(b.x / TILE);
+      const row = Math.floor(b.y / TILE);
+      if (!explored[row] || explored[row][col] === 0) continue;
+      ctx.fillStyle = `rgba(255, 220, 120, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = `rgba(255, 240, 200, ${alpha * 0.7})`;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    for (const d of ectoplasmDrips) {
+      const sx = d.x - camX;
+      const sy = d.y - camY;
+      if (sx < -20 || sx > VIEW_W + 20 || sy < -20 || sy > VIEW_H + 20) continue;
+      const col = Math.floor(d.x / TILE);
+      const row = Math.floor(d.y / TILE);
+      if (!explored[row] || explored[row][col] === 0) continue;
+      const alpha = explored[row][col] === 2 ? 0.5 : 0.2;
+      ctx.fillStyle = `hsla(${d.hue}, 60%, 45%, ${alpha * (0.6 + Math.sin(d.phase) * 0.4)})`;
+      ctx.beginPath();
+      ctx.arc(sx, sy, d.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    for (const t of torchLights) {
+      if (t.x < startCol - 1 || t.x > endCol + 1) continue;
+      if (t.y < startRow - 1 || t.y > endRow + 1) continue;
+      const st = explored[t.y][t.x];
+      if (st === 0) continue;
+      const wx = t.x * TILE + TILE / 2 - camX;
+      const wy = t.y * TILE + TILE / 2 - camY;
+      drawTorch(t, wx, wy);
+    }
+
+    for (const o of energyOrbs) {
+      if (!o.alive) continue;
+      if (o.tileX < startCol - 1 || o.tileX > endCol + 1) continue;
+      if (o.tileY < startRow - 1 || o.tileY > endRow + 1) continue;
+      const st = explored[o.tileY] ? explored[o.tileY][o.tileX] : 0;
+      if (st === 0) continue;
+      const sx = o.tileX * TILE + TILE / 2 - camX;
+      const sy = o.tileY * TILE + TILE / 2 - camY + Math.sin(o.phase * 3) * 2;
+      ctx.globalAlpha = st === 2 ? 1 : 0.75;
+      drawEnergyOrb(o, sx, sy);
+      ctx.globalAlpha = 1;
+    }
+
+    for (const g of ghosts) {
+      if (!g.alive) continue;
+      if (g.tileX < startCol - 1 || g.tileX > endCol + 1) continue;
+      if (g.tileY < startRow - 1 || g.tileY > endRow + 1) continue;
+      const st = explored[g.tileY] ? explored[g.tileY][g.tileX] : 0;
+      // Only draw in currently visible tiles — hides them behind fog
+      if (st !== 2) continue;
+      const { px, py } = ghostPixel(g);
+      const sx = px - camX;
+      const sy = py - camY;
+      drawGhost(g, sx, sy);
+    }
+
+    if (!gameOver || win) {
+      const { px, py } = playerPixel();
+      drawPlayer(px - camX, py - camY, player.facing, player.moving, now);
+      if (!(now < player.invulnUntil && Math.floor(now / 100) % 2 === 0)) {
+        drawProtonWand(px - camX, py - camY, player.facing);
+      }
+    }
+
+    drawProtonBeam(camX, camY);
+
+    for (let row = startRow; row <= endRow; row++) {
+      for (let col = startCol; col <= endCol; col++) {
+        if (row < 0 || row >= ROWS || col < 0 || col >= COLS) continue;
+        const st = explored[row][col];
+        if (st === 2) continue;
+        const wx = col * TILE - camX;
+        const wy = row * TILE - camY;
+        if (st === 0) {
+          ctx.fillStyle = '#000000';
+          ctx.fillRect(wx, wy, TILE, TILE);
+        } else {
+          ctx.fillStyle = 'rgba(6, 10, 22, 0.62)';
+          ctx.fillRect(wx, wy, TILE, TILE);
+        }
+      }
+    }
+
+    for (const e of floatingEmbers) {
+      const col = Math.floor(e.x / TILE);
+      const row = Math.floor(e.y / TILE);
+      if (!explored[row] || explored[row][col] === 0) continue;
+      const sx = e.x - camX;
+      const sy = e.y - camY;
+      if (sx < 0 || sx > VIEW_W || sy < 0 || sy > VIEW_H) continue;
+      const alpha = (explored[row][col] === 2 ? 0.8 : 0.3) * (0.5 + Math.sin(e.phase) * 0.5);
+      ctx.fillStyle = `hsla(${e.hue}, 100%, 60%, ${alpha})`;
+      ctx.fillRect(sx, sy, e.size, e.size);
+    }
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    for (const f of fogPatches) {
+      const col = Math.floor(f.x / TILE);
+      const row = Math.floor(f.y / TILE);
+      if (!explored[row] || explored[row][col] === 0) continue;
+      const sx = f.x - camX;
+      const sy = f.y - camY;
+      if (sx < -f.r || sx > VIEW_W + f.r || sy < -f.r || sy > VIEW_H + f.r) continue;
+      const alpha = (explored[row][col] === 2 ? 0.08 : 0.03) * (0.6 + Math.sin(f.phase) * 0.4);
+      const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, f.r);
+      grad.addColorStop(0, `rgba(60,80,140,${alpha})`);
+      grad.addColorStop(1, 'rgba(60,80,140,0)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(sx - f.r, sy - f.r, f.r * 2, f.r * 2);
+    }
+    ctx.restore();
+
+    drawVisionVignette();
+
+    for (const p of particles) {
+      const alpha = Math.max(0, p.life / p.maxLife);
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = p.color;
+      const px = p.x - camX;
+      const py = p.y - camY;
+      ctx.fillRect(px - p.size / 2, py - p.size / 2, p.size, p.size);
+    }
+    ctx.globalAlpha = 1;
+
+    if (!gameOver && !win) {
+      const { px, py } = playerPixel();
+      const sx = px - camX;
+      const sy = py - camY;
+      ctx.save();
+      ctx.globalAlpha = 0.28 + Math.sin(time * 0.006) * 0.1;
+      ctx.strokeStyle = '#ffe066';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 6]);
+      ctx.strokeRect(sx - TILE * 1.5, sy - TILE * 1.5, TILE * 3, TILE * 3);
+      ctx.restore();
+    }
+
+    if (gameOver || win) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.82)';
+      ctx.fillRect(0, 0, VIEW_W, VIEW_H);
+      const msg = win ? '🏆 VICTORY! 🏆' : '💀 GAME OVER 💀';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = 'bold 44px "Courier New", monospace';
+      ctx.fillStyle = win ? '#ffd966' : '#ff6b6b';
+      ctx.shadowColor = win ? '#f0b000' : '#ff0000';
+      ctx.shadowBlur = 28;
+      ctx.fillText(msg, VIEW_W / 2, VIEW_H / 2 - 30);
+      ctx.font = 'bold 16px "Courier New", monospace';
+      ctx.fillStyle = '#e0ecff';
+      ctx.shadowBlur = 0;
+      ctx.fillText('PRESS RESTART', VIEW_W / 2, VIEW_H / 2 + 30);
+      if (win) {
+        ctx.fillStyle = '#aaffaa';
+        ctx.font = 'bold 14px "Courier New", monospace';
+        const t = formatTime(runTimeMs);
+        const best = bestTimeMs !== Infinity ? '   best ' + formatTime(bestTimeMs) : '';
+        ctx.fillText('Time ' + t + best, VIEW_W / 2, VIEW_H / 2 + 60);
+      }
+    }
+  }
+
+  // ============================================================
+  //  SECTION 27 — MINIMAP + COMPASS
+  // ============================================================
+  function renderMinimap() {
+    const size = minimap.width;
+    const cw = size / COLS;
+    const ch = size / ROWS;
+
+    mmCtx.fillStyle = '#02040a';
+    mmCtx.fillRect(0, 0, size, size);
+
+    for (let y = 0; y < ROWS; y++) {
+      for (let x = 0; x < COLS; x++) {
+        const st = explored[y][x];
+        if (st === 0) continue;
+        if (maze[y][x] === WALL) {
+          mmCtx.fillStyle = st === 2 ? '#4a5878' : '#1c2438';
+        } else {
+          mmCtx.fillStyle = st === 2 ? '#6888b8' : '#182438';
+        }
+        mmCtx.fillRect(x * cw, y * ch, Math.ceil(cw) + 1, Math.ceil(ch) + 1);
+      }
+    }
+
+    for (const b of breadcrumbs) {
+      const bx = Math.floor(b.x / TILE);
+      const by = Math.floor(b.y / TILE);
+      mmCtx.fillStyle = 'rgba(255, 220, 120, 0.5)';
+      mmCtx.fillRect(bx * cw, by * ch, Math.max(1, cw), Math.max(1, ch));
+    }
+
+    for (const o of energyOrbs) {
+      if (!o.alive) continue;
+      const st = explored[o.tileY] ? explored[o.tileY][o.tileX] : 0;
+      if (st === 0) continue;
+      mmCtx.fillStyle = '#ffe066';
+      mmCtx.shadowColor = '#ffe066';
+      mmCtx.shadowBlur = 3;
+      mmCtx.fillRect(o.tileX * cw - 1, o.tileY * ch - 1, Math.max(3, cw + 2), Math.max(3, ch + 2));
+      mmCtx.shadowBlur = 0;
+    }
+
+    for (const g of ghosts) {
+      if (!g.alive) continue;
+      const st = explored[g.tileY] ? explored[g.tileY][g.tileX] : 0;
+      if (st !== 2) continue;
+      mmCtx.fillStyle = '#ff5566';
+      mmCtx.fillRect(g.tileX * cw - 1, g.tileY * ch - 1, Math.max(3, cw + 2), Math.max(3, ch + 2));
+    }
+
+    mmCtx.fillStyle = '#ffd966';
+    mmCtx.shadowColor = '#ffd966';
+    mmCtx.shadowBlur = 4;
+    mmCtx.fillRect(
+      player.tileX * cw - 1,
+      player.tileY * ch - 1,
+      Math.max(3, cw + 2),
+      Math.max(3, ch + 2)
+    );
+    mmCtx.shadowBlur = 0;
+  }
+
+  function renderCompass() {
+    const size = compass.width;
+    const c = size / 2;
+    const radius = c - 6;
+
+    cpCtx.clearRect(0, 0, size, size);
+    cpCtx.fillStyle = 'rgba(4,8,16,0.9)';
+    cpCtx.beginPath();
+    cpCtx.arc(c, c, radius + 3, 0, Math.PI * 2);
+    cpCtx.fill();
+
+    cpCtx.strokeStyle = '#2a3b6e';
+    cpCtx.lineWidth = 2;
+    cpCtx.beginPath();
+    cpCtx.arc(c, c, radius, 0, Math.PI * 2);
+    cpCtx.stroke();
+
+    cpCtx.fillStyle = '#5d7bd0';
+    cpCtx.font = 'bold 10px monospace';
+    cpCtx.textAlign = 'center';
+    cpCtx.textBaseline = 'middle';
+    cpCtx.fillText('N', c, c - radius + 6);
+
+    let nearest = null, nearestDist = Infinity;
+    for (const g of ghosts) {
+      if (!g.alive) continue;
+      const d = Math.hypot(g.tileX - player.tileX, g.tileY - player.tileY);
+      if (d < nearestDist) { nearestDist = d; nearest = g; }
+    }
+
+    cpCtx.fillStyle = '#ffd966';
+    cpCtx.beginPath();
+    cpCtx.arc(c, c, 3, 0, Math.PI * 2);
+    cpCtx.fill();
+
+    if (nearest) {
+      const dx = nearest.tileX - player.tileX;
+      const dy = nearest.tileY - player.tileY;
+      const angle = Math.atan2(dy, dx);
+
+      const arrowLen = radius - 6;
+      const ax = c + Math.cos(angle) * arrowLen;
+      const ay = c + Math.sin(angle) * arrowLen;
+
+      cpCtx.strokeStyle = '#ff6677';
+      cpCtx.lineWidth = 2;
+      cpCtx.beginPath();
+      cpCtx.moveTo(c + Math.cos(angle) * 4, c + Math.sin(angle) * 4);
+      cpCtx.lineTo(ax, ay);
+      cpCtx.stroke();
+
+      cpCtx.fillStyle = '#ff6677';
+      cpCtx.beginPath();
+      cpCtx.moveTo(ax, ay);
+      cpCtx.lineTo(ax - Math.cos(angle - 0.4) * 8, ay - Math.sin(angle - 0.4) * 8);
+      cpCtx.lineTo(ax - Math.cos(angle + 0.4) * 8, ay - Math.sin(angle + 0.4) * 8);
+      cpCtx.closePath();
+      cpCtx.fill();
+
+      cpCtx.fillStyle = '#c8d6ff';
+      cpCtx.font = 'bold 9px monospace';
+      cpCtx.fillText(Math.round(nearestDist), c, c + radius - 8);
+    } else {
+      cpCtx.fillStyle = '#33ff88';
+      cpCtx.font = 'bold 10px monospace';
+      cpCtx.fillText('✓', c, c + 2);
+    }
+  }
+
+  // ============================================================
+  //  SECTION 28 — MAIN LOOP
+  // ============================================================
+  let lastGameTime = 0;
+  function loop(now) {
+    const rawDt = Math.min(50, now - (lastGameTime || now));
+    lastGameTime = now;
+
+    update(rawDt, now);
+    render(now);
+    renderMinimap();
+    renderCompass();
+
+    requestAnimationFrame(loop);
+  }
+
+  // ============================================================
+  //  SECTION 29 — INPUT
+  // ============================================================
+  window.addEventListener('keydown', (e) => {
+    const k = e.key;
+    if (k.startsWith('Arrow') || k === ' ') e.preventDefault();
+    keys[k] = true;
+    if (k.toLowerCase() in { w: 1, a: 1, s: 1, d: 1 }) keys[k.toLowerCase()] = true;
+    if (k === 'Shift') keys['shift'] = true;
+    if (k === 'p' || k === 'P') {
+      if (started && !gameOver && !win) {
+        paused = !paused;
+        pauseOverlay.classList.toggle('hidden', !paused);
+        if (paused) stopBeamSound();
+      }
+    }
+  });
+
+  window.addEventListener('keyup', (e) => {
+    const k = e.key;
+    if (k.startsWith('Arrow') || k === ' ') e.preventDefault();
+    keys[k] = false;
+    if (k.toLowerCase() in { w: 1, a: 1, s: 1, d: 1 }) keys[k.toLowerCase()] = false;
+    if (k === 'Shift') keys['shift'] = false;
+  });
+
+  function handleBlur() {
+    for (const k in keys) keys[k] = false;
+    if (started && !gameOver && !win) {
+      paused = true;
+      pauseOverlay.classList.remove('hidden');
+      stopBeamSound();
+    }
+  }
+  window.addEventListener('blur', handleBlur);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) handleBlur();
+  });
+
+  document.getElementById('restartBtn').addEventListener('click', () => {
+    maze = generateMaze(COLS, ROWS);
+    buildSprites();
+    resetGame();
+    started = true;
+    startOverlay.classList.add('hidden');
+    pauseOverlay.classList.add('hidden');
+    lastGameTime = performance.now();
+  });
+
+  document.getElementById('startBtn').addEventListener('click', () => {
+    ensureAudio();
+    startOverlay.classList.add('hidden');
+    started = true;
+    lastGameTime = performance.now();
+    beep(440, 0.1, 'square', 0.06);
+  });
+
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+  // ============================================================
+  //  SECTION 30 — TOUCH CONTROLS
+  // ============================================================
+  const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  if (isTouch) {
+    touchControls.classList.add('visible');
+
+    function bindHold(el, onDown, onUp) {
+      el.addEventListener('touchstart', (e) => { e.preventDefault(); onDown(); }, { passive: false });
+      el.addEventListener('touchend', (e) => { e.preventDefault(); if (onUp) onUp(); }, { passive: false });
+      el.addEventListener('touchcancel', (e) => { e.preventDefault(); if (onUp) onUp(); }, { passive: false });
+    }
+
+    document.querySelectorAll('.dpad button').forEach(btn => {
+      const dir = btn.getAttribute('data-dir');
+      bindHold(btn, () => {
+        if (!started || paused) return;
+        const now = performance.now();
+        if (dir === 'up') tryMove(0, -1, 'up', now);
+        else if (dir === 'down') tryMove(0, 1, 'down', now);
+        else if (dir === 'left') tryMove(-1, 0, 'left', now);
+        else if (dir === 'right') tryMove(1, 0, 'right', now);
+      });
+    });
+
+    bindHold(document.getElementById('btnFire'),
+      () => { keys[' '] = true; ensureAudio(); },
+      () => { keys[' '] = false; }
+    );
+    bindHold(document.getElementById('btnSprint'),
+      () => { keys['shift'] = true; },
+      () => { keys['shift'] = false; }
+    );
+  }
+
+  // ============================================================
+  //  SECTION 31 — START
+  // ============================================================
+  buildSprites();
+  recountFloorTiles();
+  resetGame();
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
