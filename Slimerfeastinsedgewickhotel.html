@@ -1,0 +1,1892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ghostbusters 1984: Sedgewick Hotel Slime Feast</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        body {
+            font-family: 'Press Start 2P', monospace;
+            background-color: #08070d;
+            color: #fff;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        canvas {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+            box-shadow: 0 0 30px rgba(57, 255, 20, 0.2);
+        }
+
+        .gb-green { color: #39ff14; }
+        .gb-orange { color: #ff6600; }
+        .gb-gold { color: #ffd700; }
+        .gb-red { color: #ff3333; }
+        .gb-cream { color: #f5f2eb; }
+
+        .btn-retro {
+            background: linear-gradient(180deg, #2a2838 0%, #13121d 100%);
+            border: 3px solid #39ff14;
+            box-shadow: 0 4px 0 #000;
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+        }
+
+        .btn-retro:active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #000;
+        }
+
+        .hud-panel {
+            background: rgba(14, 13, 22, 0.88);
+            border: 2px solid #d4af37;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.9);
+            backdrop-filter: blur(4px);
+        }
+
+        .dpad-btn {
+            background: rgba(35, 33, 48, 0.85);
+            border: 2px solid #39ff14;
+            touch-action: manipulation;
+        }
+        .dpad-btn:active {
+            background: rgba(57, 255, 20, 0.4);
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-1 select-none">
+
+    <div class="relative w-full max-w-5xl flex flex-col items-center">
+        
+        <!-- Header HUD Bar -->
+        <div class="w-full flex justify-between items-center mb-1.5 px-3 py-2 hud-panel rounded-lg text-[10px] md:text-xs">
+            <div class="flex items-center gap-3">
+                <span class="text-gray-400">SCORE:</span>
+                <span id="ui-score" class="gb-gold">000000</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span id="ui-level-name" class="gb-green">SEDGEWICK HOTEL - EXPANSIVE FEAST</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="btn-sound" class="text-[9px] md:text-xs bg-gray-800 hover:bg-gray-700 px-2 py-1 rounded border border-gray-600">🔊 SOUND</button>
+                <button id="btn-pause" class="text-[9px] md:text-xs bg-gray-800 hover:bg-gray-700 px-2 py-1 rounded border border-gray-600">⏸ PAUSE</button>
+            </div>
+        </div>
+
+        <!-- Canvas Container -->
+        <div class="relative w-full aspect-[16/9] max-h-[75vh] bg-black rounded-lg overflow-hidden border-4 border-amber-600">
+            <canvas id="gameCanvas" class="w-full h-full block"></canvas>
+
+            <!-- Overlay Screen (Start / Game Over / Win / Pause) -->
+            <div id="overlay" class="absolute inset-0 bg-black/90 flex flex-col items-center justify-center p-6 text-center z-20">
+                <h1 id="overlay-title" class="text-lg md:text-2xl gb-green mb-3 leading-relaxed">
+                    SEDGEWICK HOTEL<br><span class="gb-orange">SLIME FEAST 1984</span>
+                </h1>
+                <div id="overlay-body" class="text-[10px] md:text-xs text-gray-300 max-w-xl mb-6 leading-5">
+                    You are <span class="gb-green">Slimer</span> — Class 5 Full-Roaming Vapor! <br><br>
+                    Explore the massive Sedgewick Hotel layout. Devour all banquet turkeys, jelly molds, and wine carts on the white table setups! <br><br>
+                    Beware of the relentless <span class="gb-orange">Ghostbuster</span> in his khaki suit! Use <span class="gb-green">Slime Attack [Spacebar]</span> to make him slip and freeze!
+                </div>
+                <button id="btn-primary" class="btn-retro text-xs md:text-sm px-6 py-3 rounded-lg gb-green font-bold tracking-wider cursor-pointer">
+                    START FEAST
+                </button>
+            </div>
+
+            <!-- In-Game Status Bar Overlay -->
+            <div id="hud-bar" class="absolute top-2 left-2 right-2 flex justify-between items-start pointer-events-none text-[9px] md:text-[11px] z-10">
+                <div class="flex flex-col gap-1.5">
+                    <div class="hud-panel px-2.5 py-1 rounded flex items-center gap-2">
+                        <span>FOOD EATEN:</span>
+                        <span id="ui-food" class="gb-gold">0 / 19</span>
+                    </div>
+                    <div class="hud-panel px-2.5 py-1 rounded flex items-center gap-2">
+                        <span>SLIME CHARGES:</span>
+                        <div id="ui-slime-charges" class="flex gap-1.5 text-xs md:text-sm">
+                            <span id="slime-charge-1" class="transition-all duration-200">💧</span>
+                            <span id="slime-charge-2" class="transition-all duration-200">💧</span>
+                            <span id="slime-charge-3" class="transition-all duration-200">💧</span>
+                        </div>
+                    </div>
+                    <div class="hud-panel px-2.5 py-1 rounded flex items-center gap-2">
+                        <span>CONTAINMENT:</span>
+                        <div class="w-24 bg-gray-900 h-2.5 rounded overflow-hidden border border-red-500 relative">
+                            <div id="ui-containment-bar" class="bg-gradient-to-r from-amber-500 to-red-600 h-full w-0 transition-all duration-75"></div>
+                        </div>
+                        <span id="ui-containment-val" class="gb-red font-bold">0%</span>
+                    </div>
+                </div>
+
+                <div class="flex flex-col items-end gap-1.5">
+                    <div class="hud-panel px-2.5 py-1 rounded flex items-center gap-2">
+                        <span>VAPOR ENERGY:</span>
+                        <span id="ui-lives" class="gb-red">❤❤❤</span>
+                    </div>
+                    <!-- Among Us Style Minimap HUD -->
+                    <div class="hud-panel p-1 rounded border-2 border-yellow-500 flex flex-col items-center">
+                        <span class="text-[8px] text-gray-300 mb-0.5">HOTEL MINIMAP</span>
+                        <canvas id="minimapCanvas" width="100" height="62" class="bg-gray-950 border border-gray-700 rounded"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Touch Controls for Mobile Devices -->
+        <div class="w-full mt-2 flex justify-between items-center px-4 md:hidden">
+            <div class="relative w-28 h-28">
+                <button id="btn-up" class="dpad-btn absolute top-0 left-9 w-9 h-9 rounded-t-lg flex items-center justify-center text-sm">▲</button>
+                <button id="btn-left" class="dpad-btn absolute top-9 left-0 w-9 h-9 rounded-l-lg flex items-center justify-center text-sm">◄</button>
+                <button id="btn-right" class="dpad-btn absolute top-9 right-0 w-9 h-9 rounded-r-lg flex items-center justify-center text-sm">►</button>
+                <button id="btn-down" class="dpad-btn absolute bottom-0 left-9 w-9 h-9 rounded-b-lg flex items-center justify-center text-sm">▼</button>
+                <div class="absolute top-9 left-9 w-9 h-9 bg-gray-900 border border-gray-700"></div>
+            </div>
+
+            <div class="flex flex-col items-center gap-1">
+                <button id="btn-slime-mobile" class="btn-retro w-16 h-16 rounded-full flex flex-col items-center justify-center gb-green text-[10px] active:scale-95">
+                    <span class="text-xl">💧</span>
+                    <span>SLIME</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Desktop Controls Legend -->
+        <div class="hidden md:flex justify-between w-full mt-2 text-[9px] text-gray-400 px-2">
+            <div><span class="text-white">NAVIGATE:</span> Arrow Keys / WASD</div>
+            <div><span class="text-white">SLIME ATTACK:</span> Spacebar (Leaves Sticky Green Puddles)</div>
+            <div><span class="text-white">GOAL:</span> Clear Banquets & Avoid Proton Beams!</div>
+        </div>
+    </div>
+
+    <script>
+        // Web Audio Synthesizer for 16-bit Retro Effects
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.enabled = true;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+            }
+
+            playEat() {
+                if (!this.enabled || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(140, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(700, this.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            }
+
+            playSlime() {
+                if (!this.enabled || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(320, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(90, this.ctx.currentTime + 0.22);
+                gain.gain.setValueAtTime(0.35, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.22);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.22);
+            }
+
+            playSlip() {
+                if (!this.enabled || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(750, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(220, this.ctx.currentTime + 0.35);
+                gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.35);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.35);
+            }
+
+            playProton() {
+                if (!this.enabled || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(850 + Math.random() * 250, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(1300, this.ctx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.08);
+            }
+
+            playHit() {
+                if (!this.enabled || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(180, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(40, this.ctx.currentTime + 0.35);
+                gain.gain.setValueAtTime(0.45, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.35);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.35);
+            }
+
+            playFreeze() {
+                if (!this.enabled || !this.ctx) return;
+                [1320, 990, 660].forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0.25, this.ctx.currentTime + idx * 0.07);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + idx * 0.07 + 0.25);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(this.ctx.currentTime + idx * 0.07);
+                    osc.stop(this.ctx.currentTime + idx * 0.07 + 0.25);
+                });
+            }
+
+            playWin() {
+                if (!this.enabled || !this.ctx) return;
+                const notes = [261.63, 329.63, 392.00, 523.25, 659.25];
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.value = freq;
+                    gain.gain.setValueAtTime(0.3, this.ctx.currentTime + idx * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + idx * 0.08 + 0.2);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start(this.ctx.currentTime + idx * 0.08);
+                    osc.stop(this.ctx.currentTime + idx * 0.08 + 0.2);
+                });
+            }
+        }
+
+        const soundEngine = new SoundEngine();
+
+        // Tile Engine Configuration
+        const TILE_SIZE = 32;
+        const VIEW_WIDTH = 640;
+        const VIEW_HEIGHT = 360;
+
+        const MAP_COLS = 50;
+        const MAP_ROWS = 31;
+
+        // Ghostbuster red warning light timing (real seconds): 3s on, then 5s off
+        const RED_LIGHT_ON_MS = 3000;
+        const RED_LIGHT_OFF_MS = 5000;
+
+        // Trap food: ~15% of the banquet food is trapped. Eating it freezes Slimer's speed.
+        const TRAP_FOOD_RATIO = 0.11;
+        const FREEZE_DURATION_MS = 1000;   // 2 seconds
+        const FREEZE_SPEED_MULT = 0.6;     // 40% slower
+
+        // Tile Constants
+        const TILE_FLOOR_CARPET = 0;
+        const TILE_FLOOR_WOOD = 1;
+        const TILE_FLOOR_KITCHEN = 2;
+        const TILE_WALL_WHITE = 3;    // Ghostbusters 1984 White Hotel Wall with Sconces
+        const TILE_WALL_DOOR = 4;     // Ornate Room Open Archway
+        const TILE_ELEVATOR = 5;      // Brass Elevator
+        const TILE_CHANDELIER = 6;    // Grand Crystal Chandelier Light Source
+        const TILE_DOOR_RED = 7;      // Standalone Red Hotel Door
+
+        const INITIAL_MAP_GRID = [
+            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3],
+            [3,0,0,0,0,0,0,3,1,1,1,1,1,1,3,5,5,5,5,3,1,1,1,1,1,3,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,3],
+            [3,0,6,0,0,0,0,3,1,0,0,6,0,1,3,1,1,1,1,3,1,0,6,0,1,3,0,0,0,6,0,0,0,0,6,0,0,0,0,3,0,6,0,0,0,0,0,6,0,3],
+            [3,0,0,0,0,0,0,3,1,0,0,0,0,1,3,1,1,1,1,3,1,0,0,0,1,3,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,3],
+            [3,0,0,0,0,0,0,7,4,1,1,1,1,1,4,7,1,1,7,4,1,1,1,1,1,4,7,0,0,0,0,0,0,0,0,0,0,0,0,4,7,0,0,0,0,0,0,0,0,3],
+            [3,3,3,4,7,3,3,3,3,3,4,7,3,3,3,3,3,3,3,3,3,3,7,4,3,3,3,3,3,7,4,3,3,3,3,3,4,7,3,3,3,3,3,4,7,3,3,3,3,3],
+            [3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3],
+            [3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3],
+            [3,0,0,0,0,0,0,0,0,0,3,3,3,3,3,7,4,3,3,3,3,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3],
+            [3,0,0,0,0,0,0,0,0,0,3,2,2,2,2,2,2,2,2,2,2,2,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3],
+            [3,3,3,3,4,7,3,3,3,3,3,2,0,0,2,2,6,2,2,0,0,2,3,3,3,3,3,3,7,4,3,3,3,3,3,3,4,7,3,3,3,3,3,4,7,3,3,3,3,3],
+            [3,1,1,1,1,1,1,1,1,3,3,2,0,0,2,2,2,2,2,0,0,2,3,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,3],
+            [3,1,0,0,1,1,0,0,1,3,3,2,2,2,2,2,2,2,2,2,2,2,3,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,3,1,0,0,0,0,0,0,0,1,3],
+            [3,1,0,0,1,1,0,0,1,7,4,2,2,2,2,2,2,2,2,2,2,4,7,1,0,0,1,1,0,0,1,1,0,0,1,1,0,0,1,3,1,0,0,0,0,0,0,0,1,3],
+            [3,1,1,1,1,1,1,1,1,3,3,3,3,3,3,7,4,3,3,3,3,3,3,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,4,7,1,1,1,1,1,1,1,1,3],
+            [3,3,3,3,3,4,7,3,3,3,0,0,0,0,0,0,0,0,0,0,0,0,3,3,3,3,3,4,7,3,3,3,3,3,3,3,7,4,3,3,3,3,3,4,7,3,3,3,3,3],
+            [3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3],
+            [3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3],
+            [3,0,0,0,0,0,0,0,0,0,0,0,6,0,0,0,0,6,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,6,0,0,0,0,3],
+            [3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3],
+            [3,3,3,4,7,3,3,3,3,3,3,3,3,7,4,3,3,3,3,3,3,3,3,3,3,3,3,4,7,3,3,3,3,3,3,7,4,3,3,3,3,3,3,4,7,3,3,3,3,3],
+            [3,1,1,1,1,1,1,1,3,5,5,5,5,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,3],
+            [3,1,0,0,0,0,1,1,3,1,1,1,1,1,0,0,1,1,3,1,0,0,0,0,1,1,0,0,1,3,1,0,0,0,0,1,1,0,1,3,1,0,0,0,0,0,0,0,1,3],
+            [3,1,0,0,0,0,1,1,4,7,1,1,1,1,0,0,1,1,7,4,0,0,0,0,1,1,0,0,1,4,7,0,0,0,0,1,1,0,1,3,1,0,0,0,0,0,0,0,1,3],
+            [3,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,4,7,1,1,1,1,1,1,1,1,3],
+            [3,3,3,3,4,7,3,3,3,3,3,3,4,7,3,3,3,3,3,3,3,3,3,4,7,3,3,3,3,3,3,3,3,3,4,7,3,3,3,3,3,3,3,4,7,3,3,3,3,3],
+            [3,1,1,1,1,1,1,1,3,0,0,0,0,0,0,0,0,0,3,1,1,1,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,3,1,1,1,1,1,1,1,1,1,3],
+            [3,1,0,0,0,0,0,1,3,0,6,0,0,0,0,0,6,0,3,1,0,0,0,0,0,0,0,0,1,3,1,0,0,0,0,0,0,0,1,3,1,0,0,0,0,0,0,0,1,3],
+            [3,1,0,0,0,0,0,1,3,0,0,0,0,0,0,0,0,0,3,1,0,0,0,0,0,0,0,0,1,3,1,0,0,0,0,0,0,0,1,3,1,0,0,0,0,0,0,0,1,3],
+            [3,1,1,1,1,1,1,1,4,7,0,0,0,0,0,0,0,0,4,7,1,1,1,1,1,1,1,1,1,4,7,1,1,1,1,1,1,1,1,4,7,1,1,1,1,1,1,1,1,3],
+            [3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3,3]
+        ];
+        let HOTEL_MAP_GRID = INITIAL_MAP_GRID.map(row => [...row]);
+
+        // Advanced Pixel Art Generator for Tiles, Slimer, and Ghostbusters
+        class PixelRenderer {
+            static drawRect(ctx, x, y, w, h, color) {
+                ctx.fillStyle = color;
+                ctx.fillRect(Math.floor(x), Math.floor(y), Math.floor(w), Math.floor(h));
+            }
+
+            static drawTile(ctx, tileId, worldX, worldY, col, row) {
+                const px = Math.floor(worldX);
+                const py = Math.floor(worldY);
+
+                if (tileId === TILE_FLOOR_CARPET) {
+                    this.drawRect(ctx, px, py, TILE_SIZE, TILE_SIZE, '#5c0812');
+                    ctx.strokeStyle = '#85101d';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(px, py + 16); ctx.lineTo(px + 16, py); ctx.lineTo(px + 32, py + 16); ctx.lineTo(px + 16, py + 32); ctx.closePath();
+                    ctx.stroke();
+
+                    this.drawRect(ctx, px + 15, py + 13, 2, 6, '#d4af37');
+                    this.drawRect(ctx, px + 13, py + 15, 6, 2, '#d4af37');
+                    this.drawRect(ctx, px + 12, py + 12, 2, 2, '#a68228');
+                    this.drawRect(ctx, px + 18, py + 12, 2, 2, '#a68228');
+                    this.drawRect(ctx, px + 15, py + 8, 2, 3, '#f5d77f');
+
+                    this.drawRect(ctx, px + 2, py + 2, 2, 2, '#a68228');
+                    this.drawRect(ctx, px + 28, py + 2, 2, 2, '#a68228');
+                    this.drawRect(ctx, px + 2, py + 28, 2, 2, '#a68228');
+                    this.drawRect(ctx, px + 28, py + 28, 2, 2, '#a68228');
+
+                } else if (tileId === TILE_FLOOR_WOOD) {
+                    this.drawRect(ctx, px, py, TILE_SIZE, TILE_SIZE, '#5d3a1a');
+                    this.drawRect(ctx, px, py, 16, 16, '#6e4521');
+                    this.drawRect(ctx, px + 16, py + 16, 16, 16, '#6e4521');
+                    this.drawRect(ctx, px, py + 15, TILE_SIZE, 1, '#3b220d');
+                    this.drawRect(ctx, px + 15, py, 1, TILE_SIZE, '#3b220d');
+                    this.drawRect(ctx, px + 4, py + 4, 8, 1, '#7e5027');
+                    this.drawRect(ctx, px + 20, py + 20, 8, 1, '#7e5027');
+                    this.drawRect(ctx, px + 1, py + 1, 1, 1, '#2b1808');
+                    this.drawRect(ctx, px + 14, py + 1, 1, 1, '#2b1808');
+                    this.drawRect(ctx, px + 17, py + 17, 1, 1, '#2b1808');
+
+                } else if (tileId === TILE_FLOOR_KITCHEN) {
+                    this.drawRect(ctx, px, py, TILE_SIZE, TILE_SIZE, '#20242c');
+                    this.drawRect(ctx, px, py, 16, 16, '#4a5260');
+                    this.drawRect(ctx, px + 16, py + 16, 16, 16, '#4a5260');
+                    this.drawRect(ctx, px + 3, py + 5, 6, 1, '#636d7e');
+                    this.drawRect(ctx, px + 20, py + 22, 5, 1, '#636d7e');
+                    this.drawRect(ctx, px + 15, py, 2, TILE_SIZE, '#121419');
+                    this.drawRect(ctx, px, py + 15, TILE_SIZE, 2, '#121419');
+
+                } else if (tileId === TILE_WALL_WHITE) {
+                    const wallAbove = row > 0 && HOTEL_MAP_GRID[row - 1]?.[col] === TILE_WALL_WHITE;
+                    const wallBelow = row < MAP_ROWS - 1 && HOTEL_MAP_GRID[row + 1]?.[col] === TILE_WALL_WHITE;
+
+                    this.drawRect(ctx, px, py, TILE_SIZE, TILE_SIZE, '#f5f0e6');
+                    this.drawRect(ctx, px + 8, py, 2, TILE_SIZE, '#ebe2d3');
+                    this.drawRect(ctx, px + 22, py, 2, TILE_SIZE, '#ebe2d3');
+
+                    if (!wallAbove) {
+                        this.drawRect(ctx, px, py, TILE_SIZE, 5, '#d4af37');
+                        this.drawRect(ctx, px, py + 5, TILE_SIZE, 1, '#b8860b');
+                    }
+
+                    if (!wallBelow) {
+                        this.drawRect(ctx, px, py + TILE_SIZE - 6, TILE_SIZE, 6, '#613d1e');
+                        this.drawRect(ctx, px, py + TILE_SIZE - 7, TILE_SIZE, 1, '#3b220d');
+                    }
+
+                    if (!wallAbove) {
+                        this.drawRect(ctx, px, py + 12, TILE_SIZE, 2, '#c29d38');
+                    }
+                    if (!wallBelow) {
+                        this.drawRect(ctx, px, py + 20, TILE_SIZE, 2, '#c29d38');
+                    }
+
+                    // Side Room Wall Sconce Lights
+                    if (!wallBelow && (col % 2 === 0)) {
+                        // Brass sconce base
+                        this.drawRect(ctx, px + 14, py + 10, 4, 5, '#b8860b');
+                        this.drawRect(ctx, px + 13, py + 6, 6, 4, '#fff8dc');
+                        // Warm glowing ambient aura for side wall sconces
+                        ctx.fillStyle = 'rgba(255, 220, 130, 0.25)';
+                        ctx.beginPath();
+                        ctx.arc(px + 16, py + 8, 12, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+
+                } else if (tileId === TILE_WALL_DOOR) {
+                    const underlyingFloor = (row % 2 === 0) ? TILE_FLOOR_CARPET : TILE_FLOOR_WOOD;
+                    this.drawTile(ctx, underlyingFloor, px, py, col, row);
+
+                    // Solid door frame posts connecting seamlessly to wall panels
+                    this.drawRect(ctx, px, py, 5, TILE_SIZE, '#f5f0e6');
+                    this.drawRect(ctx, px + TILE_SIZE - 5, py, 5, TILE_SIZE, '#f5f0e6');
+                    this.drawRect(ctx, px, py, TILE_SIZE, 5, '#f5f0e6');
+
+                    // Gold ornate brass trim on door frame
+                    this.drawRect(ctx, px + 4, py, 2, TILE_SIZE, '#d4af37');
+                    this.drawRect(ctx, px + TILE_SIZE - 6, py, 2, TILE_SIZE, '#d4af37');
+                    this.drawRect(ctx, px, py + 4, TILE_SIZE, 3, '#ffd700');
+
+                    // Velvet room entrance valance / header
+                    this.drawRect(ctx, px + 5, py + 7, TILE_SIZE - 10, 5, '#800c19');
+                    this.drawRect(ctx, px + 5, py + 12, TILE_SIZE - 10, 1, '#ffd700');
+
+                } else if (tileId === TILE_DOOR_RED) {
+                    const underlyingFloor = (row % 2 === 0) ? TILE_FLOOR_CARPET : TILE_FLOOR_WOOD;
+                    this.drawTile(ctx, underlyingFloor, px, py, col, row);
+
+                    // Solid door frame outer posts fitting wall boundaries
+                    this.drawRect(ctx, px, py, 3, TILE_SIZE, '#f5f0e6');
+                    this.drawRect(ctx, px + TILE_SIZE - 3, py, 3, TILE_SIZE, '#f5f0e6');
+                    this.drawRect(ctx, px, py, TILE_SIZE, 3, '#f5f0e6');
+
+                    // Red mahogany full door panel fitting frame
+                    this.drawRect(ctx, px + 3, py + 3, 26, 26, '#d4af37');
+                    this.drawRect(ctx, px + 4, py + 4, 24, 24, '#800c19');
+                    this.drawRect(ctx, px + 7, py + 6, 18, 9, '#5c0812');
+                    this.drawRect(ctx, px + 7, py + 17, 18, 9, '#5c0812');
+                    this.drawRect(ctx, px + 21, py + 15, 3, 3, '#ffd700');
+                    this.drawRect(ctx, px + 22, py + 18, 1, 2, '#3b220d');
+
+                } else if (tileId === TILE_ELEVATOR) {
+                    this.drawRect(ctx, px, py, TILE_SIZE, TILE_SIZE, '#18151f');
+                    this.drawRect(ctx, px + 2, py + 2, 28, 28, '#b8860b');
+                    this.drawRect(ctx, px + 4, py + 6, 11, 22, '#d4af37');
+                    this.drawRect(ctx, px + 17, py + 6, 11, 22, '#d4af37');
+                    this.drawRect(ctx, px + 15, py + 2, 2, 28, '#594103');
+                    this.drawRect(ctx, px + 11, py + 2, 10, 4, '#ffd700');
+
+                } else if (tileId === TILE_CHANDELIER) {
+                    this.drawTile(ctx, TILE_FLOOR_CARPET, px, py, col, row);
+                    this.drawRect(ctx, px + 12, py + 12, 8, 8, '#ffd700');
+                    this.drawRect(ctx, px + 10, py + 10, 12, 12, 'rgba(255, 235, 150, 0.4)');
+                    this.drawRect(ctx, px + 14, py + 14, 4, 4, '#ffffff');
+                }
+            }
+
+            static drawRoundBanquetTable(ctx, centerX, centerY) {
+                const cx = Math.floor(centerX);
+                const cy = Math.floor(centerY);
+
+                const chairRadius = 48;
+                const totalChairs = 10;
+
+                for (let i = 0; i < totalChairs; i++) {
+                    const angle = (i * 2 * Math.PI) / totalChairs;
+                    const chairX = Math.floor(cx + Math.cos(angle) * chairRadius);
+                    const chairY = Math.floor(cy + Math.sin(angle) * chairRadius);
+
+                    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+                    ctx.beginPath();
+                    ctx.arc(chairX, chairY + 3, 9, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#d4af37';
+                    ctx.beginPath();
+                    ctx.arc(chairX, chairY, 8, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#800c19';
+                    ctx.beginPath();
+                    ctx.arc(chairX, chairY, 5.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    const backX = chairX + Math.cos(angle) * 4;
+                    const backY = chairY + Math.sin(angle) * 4;
+                    this.drawRect(ctx, backX - 2, backY - 2, 4, 4, '#ffd700');
+                }
+
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+                ctx.beginPath();
+                ctx.arc(cx + 3, cy + 5, 36, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#dedede';
+                ctx.beginPath();
+                ctx.arc(cx, cy, 34, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(cx, cy, 31, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = '#d4af37';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(cx, cy, 30, 0, Math.PI * 2);
+                ctx.stroke();
+
+                ctx.strokeStyle = '#ebebeb';
+                ctx.lineWidth = 1.5;
+                for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
+                    ctx.beginPath();
+                    ctx.moveTo(cx + Math.cos(a) * 20, cy + Math.sin(a) * 20);
+                    ctx.lineTo(cx + Math.cos(a) * 31, cy + Math.sin(a) * 31);
+                    ctx.stroke();
+                }
+
+                ctx.fillStyle = '#ffd700';
+                ctx.beginPath();
+                ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#ff4500';
+                ctx.beginPath();
+                ctx.arc(cx, cy, 3.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            static drawRoomServiceCart(ctx, x, y) {
+                const cx = Math.floor(x);
+                const cy = Math.floor(y);
+
+                // Cart ground shadow
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+                ctx.beginPath();
+                ctx.ellipse(cx, cy + 12, 18, 6, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Cart Wheels
+                this.drawRect(ctx, cx - 14, cy + 8, 4, 6, '#1a1a1a');
+                this.drawRect(ctx, cx + 10, cy + 8, 4, 6, '#1a1a1a');
+                this.drawRect(ctx, cx - 13, cy + 9, 2, 4, '#888888');
+                this.drawRect(ctx, cx + 11, cy + 9, 2, 4, '#888888');
+
+                // Chrome Cart Frame & Lower Shelf
+                this.drawRect(ctx, cx - 15, cy + 6, 30, 3, '#c0c0c0');
+                this.drawRect(ctx, cx - 14, cy - 6, 3, 12, '#e0e0e0');
+                this.drawRect(ctx, cx + 11, cy - 6, 3, 12, '#e0e0e0');
+
+                // White Tablecloth draped top
+                this.drawRect(ctx, cx - 17, cy - 8, 34, 10, '#ffffff');
+                this.drawRect(ctx, cx - 16, cy - 6, 32, 11, '#f0f0f0');
+                // Gold Trim Drapery Skirt
+                this.drawRect(ctx, cx - 17, cy + 1, 34, 2, '#d4af37');
+
+                // Brass Push Handle
+                this.drawRect(ctx, cx - 20, cy - 10, 4, 8, '#b8860b');
+                this.drawRect(ctx, cx - 20, cy - 10, 2, 8, '#ffd700');
+
+                // Silver Cloche (Domed Dish Cover)
+                this.drawRect(ctx, cx - 10, cy - 15, 12, 7, '#dcdcdc');
+                this.drawRect(ctx, cx - 8, cy - 17, 8, 3, '#ffffff');
+                this.drawRect(ctx, cx - 5, cy - 19, 2, 2, '#ffd700');
+
+                // Champagne Bucket & Wine Bottle
+                this.drawRect(ctx, cx + 3, cy - 14, 8, 6, '#a9a9a9');
+                this.drawRect(ctx, cx + 5, cy - 19, 3, 6, '#1b4d3e');
+                this.drawRect(ctx, cx + 6, cy - 20, 1, 2, '#ffd700');
+
+                // Folded Crimson Napkin
+                this.drawRect(ctx, cx - 2, cy - 11, 3, 3, '#ff3333');
+            }
+
+            static drawFloatingChandelier(ctx, x, y, frame) {
+                const floatY = Math.sin((frame + x) * 0.08) * 4;
+                const cx = Math.floor(x);
+                const cy = Math.floor(y + floatY);
+
+                // Floor Light Aura Projection
+                ctx.save();
+                ctx.fillStyle = 'rgba(255, 230, 150, 0.12)';
+                ctx.beginPath();
+                ctx.ellipse(cx, y + 28, 32, 14, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Ceiling Chain
+                ctx.strokeStyle = '#b8860b';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(cx, cy - 30);
+                ctx.lineTo(cx, cy - 8);
+                ctx.stroke();
+
+                // Chain Links
+                for (let ch = cy - 28; ch < cy - 8; ch += 5) {
+                    this.drawRect(ctx, cx - 1, ch, 3, 2, '#ffd700');
+                }
+
+                // Ornate Brass Mounting Crown
+                this.drawRect(ctx, cx - 6, cy - 32, 12, 3, '#d4af37');
+
+                // Chandelier Main Brass Ring & Tiers
+                this.drawRect(ctx, cx - 18, cy - 8, 36, 4, '#d4af37');
+                this.drawRect(ctx, cx - 14, cy - 4, 28, 3, '#ffd700');
+                this.drawRect(ctx, cx - 8, cy - 1, 16, 3, '#b8860b');
+                this.drawRect(ctx, cx - 3, cy + 2, 6, 4, '#ffd700');
+
+                // Candles and Glowing Flames
+                const candlePositions = [-15, -9, -3, 3, 9, 15];
+                candlePositions.forEach((offX, idx) => {
+                    this.drawRect(ctx, cx + offX - 1, cy - 13, 3, 5, '#f5f5dc');
+                    const flicker = Math.sin(frame * 0.2 + idx) * 1.5;
+                    this.drawRect(ctx, cx + offX - 1, cy - 17 + flicker, 3, 4, '#ffaa00');
+                    this.drawRect(ctx, cx + offX, cy - 16 + flicker, 1, 2, '#ffffff');
+                });
+
+                // Hanging Crystal Drops
+                const crystalPositions = [-16, -11, -6, 0, 6, 11, 16];
+                crystalPositions.forEach((offX, idx) => {
+                    const dropLen = 4 + (idx % 3) * 3;
+                    this.drawRect(ctx, cx + offX, cy - 4, 1, dropLen, '#e0ffff');
+                    this.drawRect(ctx, cx + offX - 1, cy - 4 + dropLen, 3, 3, '#ffffff');
+                });
+
+                // Sparkling Star FX on Crystals
+                if (Math.floor((frame + x) / 8) % 3 === 0) {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '9px sans-serif';
+                    ctx.fillText('✦', cx - 12 + ((frame * 3) % 24), cy - 2);
+                }
+                ctx.restore();
+            }
+
+            static drawSlimer(ctx, x, y, frame, dir, isEating) {
+                const bounce = Math.sin(frame * 0.18) * 3;
+                const sx = Math.floor(x - 16);
+                const sy = Math.floor(y - 18 + bounce);
+
+                ctx.fillStyle = 'rgba(57, 255, 20, 0.3)';
+                ctx.beginPath();
+                ctx.arc(x, y + 2, 22, 0, Math.PI * 2);
+                ctx.fill();
+
+                this.drawRect(ctx, sx + 5, sy + 4, 22, 24, '#39ff14');
+                this.drawRect(ctx, sx + 3, sy + 8, 26, 18, '#32cd32');
+                this.drawRect(ctx, sx + 7, sy + 2, 18, 28, '#39ff14');
+                this.drawRect(ctx, sx + 6, sy + 18, 20, 8, '#26a626');
+                this.drawRect(ctx, sx + 8, sy + 6, 6, 6, '#adff2f');
+
+                const eyeOffset = dir === 'left' ? -2 : (dir === 'right' ? 2 : 0);
+                this.drawRect(ctx, sx + 7 + eyeOffset, sy + 7, 6, 6, '#ffff00');
+                this.drawRect(ctx, sx + 17 + eyeOffset, sy + 7, 6, 6, '#ffff00');
+                this.drawRect(ctx, sx + 9 + eyeOffset, sy + 9, 2, 2, '#000000');
+                this.drawRect(ctx, sx + 19 + eyeOffset, sy + 9, 2, 2, '#000000');
+
+                if (isEating || Math.floor(frame / 8) % 2 === 0) {
+                    this.drawRect(ctx, sx + 6, sy + 15, 20, 11, '#660000');
+                    this.drawRect(ctx, sx + 9, sy + 19, 14, 5, '#ff69b4');
+                    this.drawRect(ctx, sx + 8, sy + 15, 3, 3, '#ffffe0');
+                    this.drawRect(ctx, sx + 21, sy + 15, 3, 3, '#ffffe0');
+                } else {
+                    this.drawRect(ctx, sx + 8, sy + 16, 16, 4, '#440000');
+                }
+
+                this.drawRect(ctx, sx + 1, sy + 14, 4, 7, '#39ff14');
+                this.drawRect(ctx, sx + 27, sy + 14, 4, 7, '#39ff14');
+            }
+
+            static drawIceOnSlimer(ctx, x, y, frame) {
+                ctx.save();
+                // Icy blue shell over Slimer
+                ctx.fillStyle = 'rgba(140, 215, 255, 0.5)';
+                ctx.beginPath();
+                ctx.ellipse(x, y + 2, 20, 24, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(225, 245, 255, 0.9)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Ice shards around him
+                const shards = [[-18, -14], [16, -16], [-20, 8], [19, 10], [0, -28]];
+                shards.forEach(([ox, oy], i) => {
+                    const tw = Math.sin(frame * 0.2 + i) * 1.5;
+                    this.drawRect(ctx, x + ox - 2, y + oy - 4 + tw, 4, 8, '#cfefff');
+                    this.drawRect(ctx, x + ox - 1, y + oy - 2 + tw, 2, 4, '#ffffff');
+                });
+                ctx.restore();
+            }
+
+            static drawGhostbuster(ctx, gb, frame) {
+                const sx = Math.floor(gb.x - 14);
+                const sy = Math.floor(gb.y - 18);
+                const walkCycle = Math.floor(frame / 6) % 2;
+
+                if (gb.stunTimer > 0) {
+                    this.drawRect(ctx, sx + 2, sy + 2, 24, 28, '#2e8b57');
+                    const starAngle = frame * 0.25;
+                    ctx.fillStyle = '#ffd700';
+                    ctx.fillText('★', gb.x - 10 + Math.cos(starAngle) * 12, gb.y - 22);
+                    ctx.fillText('★', gb.x - 10 - Math.cos(starAngle) * 12, gb.y - 22);
+                }
+
+                // Detailed Khaki Jumpsuit Body
+                this.drawRect(ctx, sx + 5, sy + 11, 18, 15, '#c2b280'); // Main torso
+                this.drawRect(ctx, sx + 7, sy + 13, 3, 11, '#a39466'); // Suit shading / zipper line
+                this.drawRect(ctx, sx + 13, sy + 12, 8, 4, '#d5c693'); // Upper chest highlight
+
+                // Black Utility Belt & Brass Buckle
+                this.drawRect(ctx, sx + 5, sy + 22, 18, 3, '#1a1a1a');
+                this.drawRect(ctx, sx + 12, sy + 22, 4, 3, '#ffd700');
+
+                // Elbow Pads & Shoulder Straps
+                this.drawRect(ctx, sx + 4, sy + 15, 3, 4, '#1f1f1f'); // Left elbow pad
+                this.drawRect(ctx, sx + 21, sy + 15, 3, 4, '#1f1f1f'); // Right elbow pad
+                this.drawRect(ctx, sx + 7, sy + 11, 2, 11, '#3a3a3a'); // Left strap
+                this.drawRect(ctx, sx + 19, sy + 11, 2, 11, '#3a3a3a'); // Right strap
+
+                // Ghostbusters Logo Patch on Shoulder
+                this.drawRect(ctx, sx + 22, sy + 12, 3, 3, '#ff0000');
+                this.drawRect(ctx, sx + 23, sy + 13, 1, 1, '#ffffff');
+
+                // Legs with Black Knee Pads & Boots
+                const legOff = walkCycle * 2;
+                this.drawRect(ctx, sx + 6 - legOff, sy + 25, 5, 5, '#c2b280');
+                this.drawRect(ctx, sx + 17 + legOff, sy + 25, 5, 5, '#c2b280');
+                this.drawRect(ctx, sx + 6 - legOff, sy + 28, 5, 3, '#1f1f1f'); // Knee pad
+                this.drawRect(ctx, sx + 17 + legOff, sy + 28, 5, 3, '#1f1f1f'); // Knee pad
+                this.drawRect(ctx, sx + 5 - legOff, sy + 31, 6, 4, '#111111'); // Boot L
+                this.drawRect(ctx, sx + 17 + legOff, sy + 31, 6, 4, '#111111'); // Boot R
+
+                // Head, Face & Hair Details
+                this.drawRect(ctx, sx + 7, sy + 2, 14, 10, '#ffdbac'); // Face base
+                this.drawRect(ctx, sx + 6, sy - 1, 16, 4, '#5c3a21'); // Hair top
+                this.drawRect(ctx, sx + 5, sy + 1, 3, 5, '#5c3a21');  // Hair side L
+                this.drawRect(ctx, sx + 20, sy + 1, 3, 5, '#5c3a21'); // Hair side R
+
+                // Eyes & Expression
+                const lookOff = gb.dirX < 0 ? -1 : (gb.dirX > 0 ? 1 : 0);
+                this.drawRect(ctx, sx + 9 + lookOff, sy + 5, 2, 3, '#1a1a1a');
+                this.drawRect(ctx, sx + 17 + lookOff, sy + 5, 2, 3, '#1a1a1a');
+                this.drawRect(ctx, sx + 11, sy + 9, 6, 1, '#8b4513'); // Mouth/Moustache detail
+
+                // Highly Detailed Proton Pack on Back
+                this.drawRect(ctx, sx + 0, sy + 9, 6, 15, '#121212');  // Outer chassis
+                this.drawRect(ctx, sx + 1, sy + 10, 4, 13, '#2a2a2a'); // Inner metal plate
+                this.drawRect(ctx, sx - 1, sy + 18, 3, 5, '#444444');  // Lower booster frame
+
+                // Flashing Cyclotron LED Lights
+                const ledPhase = Math.floor(frame / 4) % 4;
+                this.drawRect(ctx, sx + 1, sy + 12, 2, 2, ledPhase === 0 ? '#ff0000' : '#440000');
+                this.drawRect(ctx, sx + 3, sy + 12, 2, 2, ledPhase === 1 ? '#00ff00' : '#004400');
+                this.drawRect(ctx, sx + 1, sy + 15, 2, 2, ledPhase === 2 ? '#0088ff' : '#002244');
+                this.drawRect(ctx, sx + 3, sy + 15, 2, 2, ledPhase === 3 ? '#ffff00' : '#444400');
+
+                // Particle Thrower (Neutrona Wand) & Cable
+                ctx.strokeStyle = '#ffcc00';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(sx + 2, sy + 21);
+                ctx.lineTo(gb.x + gb.dirX * 10, gb.y + gb.dirY * 10);
+                ctx.stroke();
+
+                const wandX = gb.x + gb.dirX * 12;
+                const wandY = gb.y + gb.dirY * 12;
+                this.drawRect(ctx, wandX - 3, wandY - 3, 6, 6, '#333333');
+                this.drawRect(ctx, wandX - 1, wandY - 1, 3, 3, '#cccccc');
+
+                if (gb.firing) {
+                    // Wand Spark Tip
+                    this.drawRect(ctx, wandX - 4, wandY - 4, 8, 8, 'rgba(255, 100, 0, 0.6)');
+                    this.drawRect(ctx, wandX - 2, wandY - 2, 4, 4, '#ffffff');
+                }
+            }
+
+            static drawSlimePuddle(ctx, p) {
+                ctx.fillStyle = 'rgba(57, 255, 20, 0.5)';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = 'rgba(173, 255, 47, 0.7)';
+                ctx.beginPath();
+                ctx.arc(p.x - p.radius * 0.2, p.y - p.radius * 0.2, p.radius * 0.4, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = 'rgba(50, 205, 50, 0.8)';
+                ctx.beginPath();
+                ctx.arc(p.x + p.radius * 0.3, p.y + p.radius * 0.1, p.radius * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            static drawFood(ctx, food, frame) {
+                const bounce = Math.sin((frame + food.x) * 0.12) * 4;
+                const fx = Math.floor(food.x);
+                const fy = Math.floor(food.y + bounce);
+
+                // Multi-layered vibrant pulsating neon aura halo
+                const pulseRadius = 24 + Math.sin(frame * 0.15) * 4;
+                const grad = ctx.createRadialGradient(fx, fy, 2, fx, fy, pulseRadius);
+                grad.addColorStop(0, 'rgba(255, 235, 50, 0.95)');
+                grad.addColorStop(0.5, 'rgba(255, 165, 0, 0.5)');
+                grad.addColorStop(1, 'rgba(255, 215, 0, 0)');
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(fx, fy, pulseRadius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Outer animated beacon glow ring
+                ctx.strokeStyle = `rgba(57, 255, 20, ${0.4 + Math.sin(frame * 0.2) * 0.3})`;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(fx, fy, pulseRadius + 2, 0, Math.PI * 2);
+                ctx.stroke();
+
+                if (food.type === 0) { // Turkey (Enlarged)
+                    PixelRenderer.drawRect(ctx, fx - 12, fy - 6, 24, 14, '#8b4513');
+                    PixelRenderer.drawRect(ctx, fx - 9, fy - 9, 18, 17, '#a0522d');
+                    PixelRenderer.drawRect(ctx, fx - 15, fy, 6, 6, '#cd853f');
+                    PixelRenderer.drawRect(ctx, fx + 9, fy, 6, 6, '#cd853f');
+                    PixelRenderer.drawRect(ctx, fx - 16, fy - 2, 3, 3, '#ffffff');
+                    PixelRenderer.drawRect(ctx, fx + 13, fy - 2, 3, 3, '#ffffff');
+                } else if (food.type === 1) { // Birthday Cake (Enlarged)
+                    PixelRenderer.drawRect(ctx, fx - 12, fy - 9, 24, 18, '#ffc0cb');
+                    PixelRenderer.drawRect(ctx, fx - 10, fy - 12, 20, 4, '#ffffff');
+                    PixelRenderer.drawRect(ctx, fx - 2, fy - 18, 4, 6, '#ffff00');
+                    PixelRenderer.drawRect(ctx, fx - 2, fy - 21, 4, 3, '#ff4500');
+                    PixelRenderer.drawRect(ctx, fx - 8, fy - 4, 3, 3, '#ff3366');
+                    PixelRenderer.drawRect(ctx, fx + 5, fy - 4, 3, 3, '#33ccff');
+                } else if (food.type === 2) { // Wine / Champagne Tower (Enlarged)
+                    PixelRenderer.drawRect(ctx, fx - 6, fy - 12, 12, 20, '#1b4d3e');
+                    PixelRenderer.drawRect(ctx, fx - 3, fy - 18, 6, 6, '#ffd700');
+                    PixelRenderer.drawRect(ctx, fx - 8, fy - 2, 16, 3, '#d4af37');
+                } else { // Jelly Mold (Enlarged)
+                    PixelRenderer.drawRect(ctx, fx - 10, fy - 7, 20, 14, '#39ff14');
+                    PixelRenderer.drawRect(ctx, fx - 7, fy - 11, 14, 5, '#7fff00');
+                    PixelRenderer.drawRect(ctx, fx - 3, fy - 4, 6, 6, '#adff2f');
+                }
+
+                // Sparkle indicators
+                ctx.fillStyle = '#ffffff';
+                ctx.font = '10px sans-serif';
+                ctx.fillText('✨', fx - 14, fy - 14 + Math.sin(frame * 0.2) * 2);
+                ctx.fillText('★', fx + 6, fy - 12 - Math.sin(frame * 0.2) * 2);
+            }
+
+            static drawProtonStream(ctx, x1, y1, x2, y2) {
+                ctx.save();
+                // Outer bright orange stream
+                ctx.strokeStyle = '#ff6600';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+
+                // Inner white/yellow core
+                ctx.strokeStyle = '#ffffaa';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+
+                // Beam electric crackle particles
+                const dist = Math.hypot(x2 - x1, y2 - y1);
+                const steps = Math.floor(dist / 12);
+                ctx.fillStyle = '#ffffff';
+                for (let i = 0; i < steps; i++) {
+                    const t = i / steps;
+                    const px = x1 + (x2 - x1) * t + (Math.random() - 0.5) * 8;
+                    const py = y1 + (y2 - y1) * t + (Math.random() - 0.5) * 8;
+                    ctx.fillRect(px - 1, py - 1, 3, 3);
+                }
+                ctx.restore();
+            }
+        }
+
+        class GameEngine {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.canvas.width = VIEW_WIDTH;
+                this.canvas.height = VIEW_HEIGHT;
+                this.ctx = this.canvas.getContext('2d');
+
+                this.minimapCanvas = document.getElementById('minimapCanvas');
+                this.minimapCtx = this.minimapCanvas ? this.minimapCanvas.getContext('2d') : null;
+
+                this.state = 'START';
+                this.score = 0;
+                this.lives = 1;
+                this.frame = 0;
+
+                // Real-time clock (ms of actual play time) that drives the red light blink
+                this.lastTick = performance.now();
+                this.redLightClock = 0;
+
+                this.camera = { x: 0, y: 0 };
+                this.keys = {};
+
+                // Default empty arrays to prevent undefined errors before startLevel is called
+                this.banquetTables = [];
+                this.roomServiceCarts = [];
+                this.slimePuddles = [];
+                this.foods = [];
+                this.ghostbusters = [];
+
+                this.setupControls();
+                this.setupUI();
+
+                this.showOverlay(
+                    'SEDGEWICK HOTEL<br><span class="gb-orange">SLIME FEAST 1984</span>',
+                    'You are <span class="gb-green">Slimer</span> — Class 5 Full-Roaming Vapor! <br><br>' +
+                    'Explore the massive Sedgewick Hotel layout. Devour all banquet turkeys, jelly molds, and wine carts on the white table setups! <br><br>' +
+                    'Beware of the relentless <span class="gb-orange">Ghostbuster</span> in his khaki suit! Use <span class="gb-green">Slime Attack [Spacebar]</span> to make him slip and freeze!',
+                    'START FEAST'
+                );
+
+                this.loop();
+            }
+
+            setupControls() {
+                window.addEventListener('keydown', (e) => {
+                    this.keys[e.key] = true;
+                    if (e.code === 'Space' || e.key === ' ') {
+                        e.preventDefault();
+                        this.triggerSlimeAttack();
+                    }
+                });
+
+                window.addEventListener('keyup', (e) => {
+                    this.keys[e.key] = false;
+                });
+
+                const bindTouch = (id, key) => {
+                    const btn = document.getElementById(id);
+                    if (!btn) return;
+                    btn.addEventListener('touchstart', (e) => { e.preventDefault(); this.keys[key] = true; });
+                    btn.addEventListener('touchend', (e) => { e.preventDefault(); this.keys[key] = false; });
+                    btn.addEventListener('mousedown', () => { this.keys[key] = true; });
+                    btn.addEventListener('mouseup', () => { this.keys[key] = false; });
+                };
+
+                bindTouch('btn-up', 'ArrowUp');
+                bindTouch('btn-down', 'ArrowDown');
+                bindTouch('btn-left', 'ArrowLeft');
+                bindTouch('btn-right', 'ArrowRight');
+
+                const slimeMobileBtn = document.getElementById('btn-slime-mobile');
+                if (slimeMobileBtn) {
+                    slimeMobileBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.triggerSlimeAttack();
+                    });
+                    slimeMobileBtn.addEventListener('touchstart', (e) => {
+                        e.preventDefault();
+                        this.triggerSlimeAttack();
+                    });
+                }
+            }
+
+            setupUI() {
+                const btnPrimary = document.getElementById('btn-primary');
+                if (btnPrimary) {
+                    btnPrimary.addEventListener('click', () => {
+                        soundEngine.init();
+                        if (this.state === 'START' || this.state === 'GAME_OVER' || this.state === 'WIN') {
+                            if (this.state === 'GAME_OVER' || this.state === 'WIN') {
+                                this.score = 0;
+                                this.lives = 1;
+                            }
+                            this.startLevel();
+                        } else if (this.state === 'PAUSED') {
+                            this.state = 'PLAYING';
+                            this.hideOverlay();
+                        }
+                    });
+                }
+
+                const btnPause = document.getElementById('btn-pause');
+                if (btnPause) {
+                    btnPause.addEventListener('click', () => {
+                        if (this.state === 'PLAYING') {
+                            this.state = 'PAUSED';
+                            this.showOverlay('GAME PAUSED', 'Take a quick breather! The hotel feast will wait.', 'RESUME');
+                        } else if (this.state === 'PAUSED') {
+                            this.state = 'PLAYING';
+                            this.hideOverlay();
+                        }
+                    });
+                }
+
+                const btnSound = document.getElementById('btn-sound');
+                if (btnSound) {
+                    btnSound.addEventListener('click', () => {
+                        soundEngine.enabled = !soundEngine.enabled;
+                        btnSound.innerText = soundEngine.enabled ? '🔊 SOUND' : '🔇 MUTED';
+                        btnSound.classList.toggle('bg-red-900', !soundEngine.enabled);
+                    });
+                }
+            }
+
+            showOverlay(title, body, buttonText) {
+                const overlay = document.getElementById('overlay');
+                const overlayTitle = document.getElementById('overlay-title');
+                const overlayBody = document.getElementById('overlay-body');
+                const btnPrimary = document.getElementById('btn-primary');
+
+                if (overlayTitle) overlayTitle.innerHTML = title;
+                if (overlayBody) overlayBody.innerHTML = body;
+                if (btnPrimary) btnPrimary.innerText = buttonText;
+                if (overlay) overlay.style.display = 'flex';
+            }
+
+            hideOverlay() {
+                const overlay = document.getElementById('overlay');
+                if (overlay) overlay.style.display = 'none';
+            }
+
+            cleanupIsolatedDoors() {
+                for (let r = 0; r < MAP_ROWS; r++) {
+                    for (let c = 0; c < MAP_COLS; c++) {
+                        const tile = HOTEL_MAP_GRID[r]?.[c];
+                        if (tile === TILE_WALL_DOOR || tile === TILE_DOOR_RED) {
+                            const neighbors = [
+                                { r: r - 1, c: c },
+                                { r: r + 1, c: c },
+                                { r: r, c: c - 1 },
+                                { r: r, c: c + 1 }
+                            ];
+                            let wallNeighborCount = 0;
+
+                            neighbors.forEach(n => {
+                                if (n.r >= 0 && n.r < MAP_ROWS && n.c >= 0 && n.c < MAP_COLS) {
+                                    const nt = HOTEL_MAP_GRID[n.r]?.[n.c];
+                                    if (nt === TILE_WALL_WHITE) wallNeighborCount++;
+                                }
+                            });
+
+                            if (wallNeighborCount === 0) {
+                                HOTEL_MAP_GRID[r][c] = (r % 2 === 0) ? TILE_FLOOR_CARPET : TILE_FLOOR_WOOD;
+                            }
+                        }
+                    }
+                }
+            }
+
+            syncConnectedDoors() {
+                const visited = Array.from({ length: MAP_ROWS }, () => Array(MAP_COLS).fill(false));
+
+                for (let r = 0; r < MAP_ROWS; r++) {
+                    for (let c = 0; c < MAP_COLS; c++) {
+                        const tile = HOTEL_MAP_GRID[r]?.[c];
+                        if ((tile === TILE_WALL_DOOR || tile === TILE_DOOR_RED) && !visited[r][c]) {
+                            const group = [];
+                            const queue = [{ r, c }];
+                            visited[r][c] = true;
+
+                            while (queue.length > 0) {
+                                const curr = queue.shift();
+                                group.push(curr);
+
+                                const neighbors = [
+                                    { r: curr.r - 1, c: curr.c },
+                                    { r: curr.r + 1, c: curr.c },
+                                    { r: curr.r, c: curr.c - 1 },
+                                    { r: curr.r, c: curr.c + 1 }
+                                ];
+
+                                neighbors.forEach(n => {
+                                    if (n.r >= 0 && n.r < MAP_ROWS && n.c >= 0 && n.c < MAP_COLS && !visited[n.r][n.c]) {
+                                        const nt = HOTEL_MAP_GRID[n.r]?.[n.c];
+                                        if (nt === TILE_WALL_DOOR || nt === TILE_DOOR_RED) {
+                                            visited[n.r][n.c] = true;
+                                            queue.push(n);
+                                        }
+                                    }
+                                });
+                            }
+
+                            const chosenStyle = Math.random() < 0.5 ? TILE_WALL_DOOR : TILE_DOOR_RED;
+                            group.forEach(pos => {
+                                HOTEL_MAP_GRID[pos.r][pos.c] = chosenStyle;
+                            });
+                        }
+                    }
+                }
+            }
+
+            findBFSPath(startCol, startRow, targetCol, targetRow) {
+                if (startCol === targetCol && startRow === targetRow) return [];
+
+                const queue = [[startCol, startRow]];
+                const visited = Array.from({ length: MAP_ROWS }, () => Array(MAP_COLS).fill(false));
+                const parent = Array.from({ length: MAP_ROWS }, () => Array(MAP_COLS).fill(null));
+
+                visited[startRow][startCol] = true;
+                const dirs = [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }];
+                let found = false;
+
+                while (queue.length > 0) {
+                    const [c, r] = queue.shift();
+                    if (c === targetCol && r === targetRow) {
+                        found = true;
+                        break;
+                    }
+
+                    for (const d of dirs) {
+                        const nc = c + d.x;
+                        const nr = r + d.y;
+                        if (nc >= 0 && nc < MAP_COLS && nr >= 0 && nr < MAP_ROWS) {
+                            if (!visited[nr][nc]) {
+                                const tile = HOTEL_MAP_GRID[nr]?.[nc];
+                                if (tile !== TILE_WALL_WHITE && tile !== TILE_ELEVATOR) {
+                                    visited[nr][nc] = true;
+                                    parent[nr][nc] = [c, r];
+                                    queue.push([nc, nr]);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (!found) return [];
+
+                const path = [];
+                let curr = [targetCol, targetRow];
+                while (curr && !(curr[0] === startCol && curr[1] === startRow)) {
+                    path.unshift(curr);
+                    curr = parent[curr[1]][curr[0]];
+                }
+                return path;
+            }
+
+            startLevel() {
+                HOTEL_MAP_GRID = INITIAL_MAP_GRID.map(row => [...row]);
+
+                this.cleanupIsolatedDoors();
+                this.syncConnectedDoors();
+
+                // Red light starts in its "on" phase each new run
+                this.redLightClock = 0;
+
+                // Start Slimer in the middle of the hotel map (Column 20, Row 13)
+                this.player = {
+                    x: 20 * TILE_SIZE + 16,
+                    y: 13 * TILE_SIZE + 16,
+                    speed: 1.36, // 20% slower (was 3.2)
+                    dir: 'down',
+                    slimeCharges: 3,
+                    maxSlimeCharges: 3,
+                    slimeRechargeTimer: 0,
+                    slimeCooldown: 0,
+                    eatingTimer: 0,
+                    containment: 0,
+                    freezeMs: 0 // > 0 while frozen by trap food
+                };
+
+                // Single highly-detailed Ghostbuster pursuing Slimer
+                this.ghostbusters = [
+                    { name: 'Peter', x: 35 * TILE_SIZE, y: 12 * TILE_SIZE, speed: 1.70, stunTimer: 0, dirX: -1, dirY: 0, firing: false } // 10% slower (was 1.5)
+                ];
+
+                // Banquet table in EVERY hotel room
+                this.banquetTables = [
+                    // Top Wing Rooms
+                    { x: 3.5 * TILE_SIZE, y: 2.5 * TILE_SIZE },
+                    { x: 10.5 * TILE_SIZE, y: 2.5 * TILE_SIZE },
+                    { x: 22.5 * TILE_SIZE, y: 2.5 * TILE_SIZE },
+                    { x: 32.0 * TILE_SIZE, y: 2.5 * TILE_SIZE },
+                    // Middle Wing Rooms & Kitchen
+                    { x: 4.5 * TILE_SIZE, y: 12.5 * TILE_SIZE },
+                    { x: 16.5 * TILE_SIZE, y: 11.5 * TILE_SIZE },
+                    { x: 30.5 * TILE_SIZE, y: 12.5 * TILE_SIZE },
+                    // Bottom Wing Rooms
+                    { x: 4.0 * TILE_SIZE, y: 22.5 * TILE_SIZE },
+                    { x: 15.0 * TILE_SIZE, y: 22.5 * TILE_SIZE },
+                    { x: 23.5 * TILE_SIZE, y: 22.5 * TILE_SIZE },
+                    { x: 34.0 * TILE_SIZE, y: 22.5 * TILE_SIZE },
+                    // East Wing Rooms (new)
+                    { x: 44.5 * TILE_SIZE, y: 2.5 * TILE_SIZE },
+                    { x: 44.5 * TILE_SIZE, y: 12.5 * TILE_SIZE },
+                    { x: 44.5 * TILE_SIZE, y: 22.5 * TILE_SIZE },
+                    // South Wing Rooms (new)
+                    { x: 4.5 * TILE_SIZE, y: 28.0 * TILE_SIZE },
+                    { x: 13.5 * TILE_SIZE, y: 28.0 * TILE_SIZE },
+                    { x: 24.0 * TILE_SIZE, y: 28.0 * TILE_SIZE },
+                    { x: 34.5 * TILE_SIZE, y: 28.0 * TILE_SIZE },
+                    { x: 44.5 * TILE_SIZE, y: 28.0 * TILE_SIZE }
+                ];
+
+                this.foodRequired = this.banquetTables.length;
+                this.foodEaten = 0;
+
+                this.roomServiceCarts = [
+                    { x: 8.5 * TILE_SIZE, y: 6.5 * TILE_SIZE },
+                    { x: 25.5 * TILE_SIZE, y: 6.5 * TILE_SIZE },
+                    { x: 14.5 * TILE_SIZE, y: 17.5 * TILE_SIZE },
+                    { x: 29.5 * TILE_SIZE, y: 17.5 * TILE_SIZE },
+                    { x: 37.5 * TILE_SIZE, y: 11.5 * TILE_SIZE },
+                    { x: 2.5 * TILE_SIZE, y: 11.5 * TILE_SIZE },
+                    // East side carts (new)
+                    { x: 45.5 * TILE_SIZE, y: 6.5 * TILE_SIZE },
+                    { x: 47.5 * TILE_SIZE, y: 11.5 * TILE_SIZE },
+                    { x: 42.5 * TILE_SIZE, y: 17.5 * TILE_SIZE }
+                ];
+
+                this.foods = [];
+                let foodIdx = 0;
+                this.banquetTables.forEach(table => {
+                    this.foods.push({
+                        x: table.x,
+                        y: table.y,
+                        type: (foodIdx++) % 4,
+                        trapped: false
+                    });
+                });
+
+                // Randomly trap ~15% of the food each run (at least one)
+                const trapCount = Math.max(1, Math.round(this.foods.length * TRAP_FOOD_RATIO));
+                const shuffled = this.foods.slice().sort(() => Math.random() - 0.5);
+                shuffled.slice(0, trapCount).forEach(f => { f.trapped = true; });
+
+                this.slimePuddles = [];
+                this.state = 'PLAYING';
+                this.hideOverlay();
+                this.updateUI();
+            }
+
+            triggerSlimeAttack() {
+                if (!this.player || this.player.slimeCharges <= 0) return;
+                this.player.slimeCharges--;
+
+                const slimeDuration = Math.floor(195 + Math.random() * 78);
+
+                this.slimePuddles.push({
+                    x: this.player.x,
+                    y: this.player.y,
+                    radius: 54,
+                    life: slimeDuration
+                });
+                soundEngine.playSlime();
+                this.updateUI();
+            }
+
+            isSolidTile(x, y) {
+                const col = Math.floor(x / TILE_SIZE);
+                const row = Math.floor(y / TILE_SIZE);
+                if (row < 0 || row >= MAP_ROWS || col < 0 || col >= MAP_COLS) return true;
+                const tile = HOTEL_MAP_GRID[row]?.[col];
+                return tile === TILE_WALL_WHITE || tile === TILE_ELEVATOR;
+            }
+
+            isBeamBlockingTile(x, y) {
+                const col = Math.floor(x / TILE_SIZE);
+                const row = Math.floor(y / TILE_SIZE);
+                if (row < 0 || row >= MAP_ROWS || col < 0 || col >= MAP_COLS) return true;
+                const tile = HOTEL_MAP_GRID[row]?.[col];
+                return tile === TILE_WALL_WHITE || tile === TILE_ELEVATOR || tile === TILE_DOOR_RED;
+            }
+
+            checkRaycast(x1, y1, x2, y2) {
+                const dx = x2 - x1;
+                const dy = y2 - y1;
+                const distance = Math.hypot(dx, dy);
+                const stepSize = 4;
+                const steps = Math.ceil(distance / stepSize);
+
+                for (let i = 1; i < steps; i++) {
+                    const t = i / steps;
+                    const px = x1 + dx * t;
+                    const py = y1 + dy * t;
+                    if (this.isBeamBlockingTile(px, py)) {
+                        return { hit: true, x: px, y: py };
+                    }
+                }
+                return { hit: false, x: x2, y: y2 };
+            }
+
+            update() {
+                // Real-time delta for the red light clock (capped so a tab switch can't skip a phase)
+                const now = performance.now();
+                const dt = Math.min(now - this.lastTick, 100);
+                this.lastTick = now;
+
+                if (this.state !== 'PLAYING' || !this.player) return;
+
+                // Only advances while playing, so pausing freezes the blink cycle
+                this.redLightClock += dt;
+
+                this.frame++;
+
+                let dx = 0;
+                let dy = 0;
+                if (this.keys['ArrowUp'] || this.keys['w'] || this.keys['W']) { dy -= 1; this.player.dir = 'up'; }
+                if (this.keys['ArrowDown'] || this.keys['s'] || this.keys['S']) { dy += 1; this.player.dir = 'down'; }
+                if (this.keys['ArrowLeft'] || this.keys['a'] || this.keys['A']) { dx -= 1; this.player.dir = 'left'; }
+                if (this.keys['ArrowRight'] || this.keys['d'] || this.keys['D']) { dx += 1; this.player.dir = 'right'; }
+
+                if (dx !== 0 && dy !== 0) {
+                    dx *= 0.7071;
+                    dy *= 0.7071;
+                }
+
+                // Smooth sliding movement check to prevent getting snagged on corner geometry or tables
+                const radius = 10;
+
+                // Frozen by trap food: 40% slower until the timer runs out
+                if (this.player.freezeMs > 0) {
+                    this.player.freezeMs = Math.max(0, this.player.freezeMs - dt);
+                }
+                const speedMult = this.player.freezeMs > 0 ? FREEZE_SPEED_MULT : 1;
+
+                let moveX = dx * this.player.speed * speedMult;
+                let moveY = dy * this.player.speed * speedMult;
+
+                // Try moving X axis
+                if (moveX !== 0) {
+                    const testX = this.player.x + moveX;
+                    if (!this.isSolidTile(testX + Math.sign(moveX) * radius, this.player.y - radius + 2) &&
+                        !this.isSolidTile(testX + Math.sign(moveX) * radius, this.player.y + radius - 2)) {
+                        this.player.x = testX;
+                    } else {
+                        // Corner nudging / sliding along Y when bumping wall edge
+                        if (!this.isSolidTile(this.player.x, this.player.y - radius - 1)) this.player.y -= 1;
+                        if (!this.isSolidTile(this.player.x, this.player.y + radius + 1)) this.player.y += 1;
+                    }
+                }
+
+                // Try moving Y axis
+                if (moveY !== 0) {
+                    const testY = this.player.y + moveY;
+                    if (!this.isSolidTile(this.player.x - radius + 2, testY + Math.sign(moveY) * radius) &&
+                        !this.isSolidTile(this.player.x + radius - 2, testY + Math.sign(moveY) * radius)) {
+                        this.player.y = testY;
+                    } else {
+                        // Corner nudging / sliding along X when bumping wall edge
+                        if (!this.isSolidTile(this.player.x - radius - 1, this.player.y)) this.player.x -= 1;
+                        if (!this.isSolidTile(this.player.x + radius + 1, this.player.y)) this.player.x += 1;
+                    }
+                }
+
+                this.player.x = Math.max(16, Math.min(MAP_COLS * TILE_SIZE - 16, this.player.x));
+                this.player.y = Math.max(16, Math.min(MAP_ROWS * TILE_SIZE - 16, this.player.y));
+
+                if (this.player.slimeCharges < this.player.maxSlimeCharges) {
+                    this.player.slimeRechargeTimer++;
+                    // 20% slower recharge: 72 frames (1.2 seconds) per charge
+                    if (this.player.slimeRechargeTimer >= 1200) {
+                        this.player.slimeCharges++;
+                        this.player.slimeRechargeTimer = 0;
+                    }
+                } else {
+                    this.player.slimeRechargeTimer = 0;
+                }
+
+                for (let i = this.foods.length - 1; i >= 0; i--) {
+                    const f = this.foods[i];
+                    const dist = Math.hypot(this.player.x - f.x, this.player.y - f.y);
+                    if (dist < 22) {
+                        this.foods.splice(i, 1);
+                        this.foodEaten++;
+                        this.score += 100;
+                        this.player.eatingTimer = 15;
+                        soundEngine.playEat();
+
+                        if (f.trapped) {
+                            this.player.freezeMs = FREEZE_DURATION_MS; // eating another trap while frozen restarts the 2s
+                            soundEngine.playFreeze();
+                        }
+
+                        if (this.foodEaten >= this.foodRequired) {
+                            this.handleWin();
+                            return;
+                        }
+                    }
+                }
+
+                if (this.player.eatingTimer > 0) {
+                    this.player.eatingTimer--;
+                }
+
+                for (let i = this.slimePuddles.length - 1; i >= 0; i--) {
+                    const p = this.slimePuddles[i];
+                    p.life--;
+                    if (p.life <= 0) {
+                        this.slimePuddles.splice(i, 1);
+                    } else {
+                        this.ghostbusters.forEach(gb => {
+                            if (gb.stunTimer <= 0) {
+                                const dist = Math.hypot(gb.x - p.x, gb.y - p.y);
+                                if (dist < p.radius + 14) {
+                                    gb.stunTimer = 328;
+                                    soundEngine.playSlip();
+                                }
+                            }
+                        });
+                    }
+                }
+
+                let underBeamCount = 0;
+
+                this.ghostbusters.forEach(gb => {
+                    if (gb.stunTimer > 0) {
+                        gb.stunTimer--;
+                        gb.firing = false;
+                        return;
+                    }
+
+                    const distX = this.player.x - gb.x;
+                    const distY = this.player.y - gb.y;
+                    const distance = Math.hypot(distX, distY);
+
+                    gb.dirX = distance > 0 ? distX / distance : 0;
+                    gb.dirY = distance > 0 ? distY / distance : 0;
+
+                    const ray = this.checkRaycast(gb.x, gb.y, this.player.x, this.player.y);
+                    const maxBeamRange = 170; // Reduced beam reach so Ghostbuster must be closer
+
+                    if (distance < maxBeamRange && !ray.hit) {
+                        gb.firing = true;
+                        gb.targetX = this.player.x;
+                        gb.targetY = this.player.y;
+                        if (this.frame % 8 === 0) soundEngine.playProton();
+
+                        underBeamCount++; // Beam builds containment at long range whenever connected
+                    } else {
+                        gb.firing = false;
+
+                        const gbCol = Math.floor(gb.x / TILE_SIZE);
+                        const gbRow = Math.floor(gb.y / TILE_SIZE);
+
+                        let tX = this.player.x;
+                        let tY = this.player.y;
+
+                        let pCol = Math.floor(tX / TILE_SIZE);
+                        let pRow = Math.floor(tY / TILE_SIZE);
+
+                        if (pRow < 0 || pRow >= MAP_ROWS || pCol < 0 || pCol >= MAP_COLS || this.isSolidTile(tX, tY)) {
+                            pCol = Math.floor(this.player.x / TILE_SIZE);
+                            pRow = Math.floor(this.player.y / TILE_SIZE);
+                        }
+
+                        if (!ray.hit && gb.name === 'Peter') {
+                            const gNextX = gb.x + gb.dirX * gb.speed;
+                            const gNextY = gb.y + gb.dirY * gb.speed;
+
+                            if (!this.isSolidTile(gNextX, gb.y)) gb.x = gNextX;
+                            if (!this.isSolidTile(gb.x, gNextY)) gb.y = gNextY;
+                        } else {
+                            if (!gb.path || this.frame % 15 === 0) {
+                                gb.path = this.findBFSPath(gbCol, gbRow, pCol, pRow);
+                            }
+
+                            if (gb.path && gb.path.length > 0) {
+                                const nextWayPoint = gb.path[0];
+                                const targetX = nextWayPoint[0] * TILE_SIZE + 16;
+                                const targetY = nextWayPoint[1] * TILE_SIZE + 16;
+
+                                const wpDistX = targetX - gb.x;
+                                const wpDistY = targetY - gb.y;
+                                const wpDist = Math.hypot(wpDistX, wpDistY);
+
+                                if (wpDist < 10) {
+                                    gb.path.shift();
+                                } else {
+                                    gb.dirX = wpDistX / wpDist;
+                                    gb.dirY = wpDistY / wpDist;
+                                    const gNextX = gb.x + gb.dirX * gb.speed;
+                                    const gNextY = gb.y + gb.dirY * gb.speed;
+
+                                    if (!this.isSolidTile(gNextX, gb.y)) gb.x = gNextX;
+                                    if (!this.isSolidTile(gb.x, gNextY)) gb.y = gNextY;
+                                }
+                            } else {
+                                const gNextX = gb.x + gb.dirX * gb.speed;
+                                const gNextY = gb.y + gb.dirY * gb.speed;
+
+                                if (!this.isSolidTile(gNextX, gb.y)) gb.x = gNextX;
+                                if (!this.isSolidTile(gb.x, gNextY)) gb.y = gNextY;
+                            }
+                        }
+                    }
+                });
+
+                if (underBeamCount > 0) {
+                    this.player.containment = Math.min(100, this.player.containment + 0.95 * underBeamCount);
+                    if (this.frame % 10 === 0) soundEngine.playHit();
+
+                    if (this.player.containment >= 100) {
+                        this.player.containment = 0;
+                        this.handleHit();
+                    }
+                } else {
+                    this.player.containment = Math.max(0, this.player.containment - 0.45);
+                }
+
+                this.camera.x = Math.max(0, Math.min(MAP_COLS * TILE_SIZE - VIEW_WIDTH, this.player.x - VIEW_WIDTH / 2));
+                this.camera.y = Math.max(0, Math.min(MAP_ROWS * TILE_SIZE - VIEW_HEIGHT, this.player.y - VIEW_HEIGHT / 2));
+
+                this.updateUI();
+            }
+
+            render() {
+                this.ctx.fillStyle = '#08070d';
+                this.ctx.fillRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+
+                this.ctx.save();
+                this.ctx.translate(-Math.floor(this.camera.x), -Math.floor(this.camera.y));
+
+                const startCol = Math.max(0, Math.floor(this.camera.x / TILE_SIZE));
+                const endCol = Math.min(MAP_COLS, Math.ceil((this.camera.x + VIEW_WIDTH) / TILE_SIZE));
+                const startRow = Math.max(0, Math.floor(this.camera.y / TILE_SIZE));
+                const endRow = Math.min(MAP_ROWS, Math.ceil((this.camera.y + VIEW_HEIGHT) / TILE_SIZE));
+
+                for (let r = startRow; r < endRow; r++) {
+                    for (let c = startCol; c < endCol; c++) {
+                        PixelRenderer.drawTile(this.ctx, HOTEL_MAP_GRID[r]?.[c] ?? TILE_WALL_WHITE, c * TILE_SIZE, r * TILE_SIZE, c, r);
+                    }
+                }
+
+                if (this.banquetTables) {
+                    this.banquetTables.forEach(t => {
+                        PixelRenderer.drawRoundBanquetTable(this.ctx, t.x, t.y);
+                    });
+                }
+
+                if (this.roomServiceCarts) {
+                    this.roomServiceCarts.forEach(c => {
+                        PixelRenderer.drawRoomServiceCart(this.ctx, c.x, c.y);
+                    });
+                }
+
+                if (this.slimePuddles) {
+                    this.slimePuddles.forEach(p => PixelRenderer.drawSlimePuddle(this.ctx, p));
+                }
+
+                if (this.foods) {
+                    this.foods.forEach(f => PixelRenderer.drawFood(this.ctx, f, this.frame));
+                }
+
+                if (this.ghostbusters) {
+                    this.ghostbusters.forEach(gb => {
+                        PixelRenderer.drawGhostbuster(this.ctx, gb, this.frame);
+                        if (gb.firing && gb.stunTimer <= 0) {
+                            const beamRay = this.checkRaycast(gb.x, gb.y, gb.targetX, gb.targetY);
+                            if (!beamRay.hit) {
+                                PixelRenderer.drawProtonStream(this.ctx, gb.x, gb.y, gb.targetX, gb.targetY);
+                            } else {
+                                PixelRenderer.drawProtonStream(this.ctx, gb.x, gb.y, beamRay.x, beamRay.y);
+                            }
+                        }
+                    });
+                }
+
+                if (this.player && this.state !== 'GAME_OVER') {
+                    PixelRenderer.drawSlimer(
+                        this.ctx,
+                        this.player.x,
+                        this.player.y,
+                        this.frame,
+                        this.player.dir,
+                        this.player.eatingTimer > 0
+                    );
+
+                    if (this.player.freezeMs > 0) {
+                        PixelRenderer.drawIceOnSlimer(this.ctx, this.player.x, this.player.y, this.frame);
+                    }
+                }
+
+                this.renderVisionRadius();
+
+                this.renderWallPenetratingGlows();
+
+                this.renderLightingPass();
+
+                this.ctx.restore();
+
+                this.renderFreezeOverlay();
+
+                this.renderMinimap();
+            }
+
+            renderFreezeOverlay() {
+                if (!this.player || this.player.freezeMs <= 0) return;
+                const k = Math.min(1, this.player.freezeMs / 400); // fades out over the last 0.4s
+                const ctx = this.ctx;
+                ctx.save();
+
+                // Overall icy blue tint across the whole screen
+                ctx.fillStyle = `rgba(90, 170, 255, ${0.28 * k})`;
+                ctx.fillRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+
+                // Frosted edges closing in from the screen borders
+                const grad = ctx.createRadialGradient(
+                    VIEW_WIDTH / 2, VIEW_HEIGHT / 2, VIEW_HEIGHT * 0.25,
+                    VIEW_WIDTH / 2, VIEW_HEIGHT / 2, VIEW_WIDTH * 0.62
+                );
+                grad.addColorStop(0, 'rgba(180, 230, 255, 0)');
+                grad.addColorStop(1, `rgba(200, 240, 255, ${0.75 * k})`);
+                ctx.fillStyle = grad;
+                ctx.fillRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+
+                ctx.restore();
+            }
+
+            renderVisionRadius() {
+                if (!this.player) return;
+                this.ctx.save();
+                const px = this.player.x;
+                const py = this.player.y;
+
+                // Smooth, feathered vision shroud around Slimer (compacted)
+                const innerRadius = 80;
+                const outerRadius = 190;
+
+                const grad = this.ctx.createRadialGradient(px, py, 10, px, py, outerRadius);
+                grad.addColorStop(0, 'rgba(57, 255, 20, 0.04)'); // Subtle spectral green central glow
+                grad.addColorStop(0.35, 'rgba(0, 0, 0, 0)');
+                grad.addColorStop(0.60, 'rgba(5, 4, 12, 0.35)');
+                grad.addColorStop(0.82, 'rgba(5, 4, 12, 0.82)');
+                grad.addColorStop(0.95, 'rgba(5, 4, 12, 0.96)');
+                grad.addColorStop(1, 'rgba(5, 4, 12, 0.99)');
+
+                this.ctx.fillStyle = grad;
+                this.ctx.fillRect(this.camera.x - 20, this.camera.y - 20, VIEW_WIDTH + 40, VIEW_HEIGHT + 40);
+
+                // Line-of-sight wall occlusion: darkens room areas & tiles blocked by solid walls & closed doors
+                const startCol = Math.max(0, Math.floor((this.camera.x - 32) / TILE_SIZE));
+                const endCol = Math.min(MAP_COLS, Math.ceil((this.camera.x + VIEW_WIDTH + 32) / TILE_SIZE));
+                const startRow = Math.max(0, Math.floor((this.camera.y - 32) / TILE_SIZE));
+                const endRow = Math.min(MAP_ROWS, Math.ceil((this.camera.y + VIEW_HEIGHT + 32) / TILE_SIZE));
+
+                this.ctx.fillStyle = 'rgba(5, 4, 12, 0.98)';
+                for (let r = startRow; r < endRow; r++) {
+                    for (let c = startCol; c < endCol; c++) {
+                        const tile = HOTEL_MAP_GRID[r]?.[c];
+                        
+                        // Keep doors visible through wall fog
+                        if (tile === TILE_WALL_DOOR || tile === TILE_DOOR_RED) continue;
+
+                        const tileX = c * TILE_SIZE + 16;
+                        const tileY = r * TILE_SIZE + 16;
+                        const distToPlayer = Math.hypot(tileX - px, tileY - py);
+
+                        // Only evaluate occlusion within active vision distance
+                        if (distToPlayer > 24) {
+                            const ray = this.checkRaycast(px, py, tileX, tileY);
+                            if (ray.hit) {
+                                this.ctx.fillRect(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                            }
+                        }
+                    }
+                }
+
+                this.ctx.restore();
+            }
+
+            renderWallPenetratingGlows() {
+                this.ctx.save();
+                
+                // 1. Food glowing beacons visible through walls & darkness
+                if (this.foods) {
+                    this.foods.forEach(f => {
+                        const pulse = Math.sin(this.frame * 0.15 + f.x) * 4;
+                        const auraRad = 26 + pulse;
+                        const grad = this.ctx.createRadialGradient(f.x, f.y, 2, f.x, f.y, auraRad);
+                        grad.addColorStop(0, 'rgba(255, 215, 0, 0.75)');
+                        grad.addColorStop(0.5, 'rgba(255, 140, 0, 0.35)');
+                        grad.addColorStop(1, 'rgba(255, 215, 0, 0)');
+                        this.ctx.fillStyle = grad;
+                        this.ctx.beginPath();
+                        this.ctx.arc(f.x, f.y, auraRad, 0, Math.PI * 2);
+                        this.ctx.fill();
+
+                        // Gentle gold sparkle beacon icon above food
+                        this.ctx.fillStyle = '#ffe066';
+                        this.ctx.font = '9px sans-serif';
+                        this.ctx.fillText('✦', f.x - 3, f.y - 14 + pulse * 0.5);
+                    });
+                }
+
+                // 2. Ghostbuster dim red warning light visible through walls
+                //    Blinks on a fixed cycle: 3 seconds on, then 5 seconds off
+                const redCycle = this.redLightClock % (RED_LIGHT_ON_MS + RED_LIGHT_OFF_MS);
+                const redLightOn = redCycle < RED_LIGHT_ON_MS;
+
+                if (this.ghostbusters && redLightOn) {
+                    this.ghostbusters.forEach(gb => {
+                        const pulse = Math.sin(this.frame * 0.2) * 6;
+                        const redRad = 65 + pulse;
+                        const grad = this.ctx.createRadialGradient(gb.x, gb.y, 4, gb.x, gb.y, redRad);
+                        grad.addColorStop(0, 'rgba(255, 30, 30, 0.55)');
+                        grad.addColorStop(0.4, 'rgba(200, 20, 20, 0.25)');
+                        grad.addColorStop(1, 'rgba(255, 0, 0, 0)');
+                        this.ctx.fillStyle = grad;
+                        this.ctx.beginPath();
+                        this.ctx.arc(gb.x, gb.y, redRad, 0, Math.PI * 2);
+                        this.ctx.fill();
+
+                        // Inner pulsing red radar core
+                        this.ctx.fillStyle = 'rgba(255, 60, 60, 0.85)';
+                        this.ctx.beginPath();
+                        this.ctx.arc(gb.x, gb.y, 5 + Math.sin(this.frame * 0.3) * 2, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    });
+                }
+
+                this.ctx.restore();
+            }
+
+            renderLightingPass() {
+                this.ctx.save();
+                this.ctx.globalCompositeOperation = 'lighter';
+                if (this.banquetTables) {
+                    this.banquetTables.forEach(t => {
+                        const grad = this.ctx.createRadialGradient(t.x, t.y, 10, t.x, t.y, 70);
+                        grad.addColorStop(0, 'rgba(255, 235, 180, 0.08)');
+                        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+                        this.ctx.fillStyle = grad;
+                        this.ctx.beginPath();
+                        this.ctx.arc(t.x, t.y, 70, 0, Math.PI * 2);
+                        this.ctx.fill();
+                    });
+                }
+                this.ctx.restore();
+            }
+
+            renderMinimap() {
+                if (!this.minimapCtx) return;
+                const mCtx = this.minimapCtx;
+                const mW = this.minimapCanvas.width;
+                const mH = this.minimapCanvas.height;
+
+                mCtx.fillStyle = '#08070d';
+                mCtx.fillRect(0, 0, mW, mH);
+
+                const scaleX = mW / (MAP_COLS * TILE_SIZE);
+                const scaleY = mH / (MAP_ROWS * TILE_SIZE);
+
+                for (let r = 0; r < MAP_ROWS; r++) {
+                    for (let c = 0; c < MAP_COLS; c++) {
+                        const tile = HOTEL_MAP_GRID[r]?.[c];
+                        if (tile === TILE_WALL_WHITE || tile === TILE_ELEVATOR) {
+                            mCtx.fillStyle = '#3a3848';
+                            mCtx.fillRect(c * TILE_SIZE * scaleX, r * TILE_SIZE * scaleY, Math.ceil(TILE_SIZE * scaleX), Math.ceil(TILE_SIZE * scaleY));
+                        } else if (tile === TILE_WALL_DOOR || tile === TILE_DOOR_RED) {
+                            mCtx.fillStyle = '#d4af37';
+                            mCtx.fillRect(c * TILE_SIZE * scaleX, r * TILE_SIZE * scaleY, Math.ceil(TILE_SIZE * scaleX), Math.ceil(TILE_SIZE * scaleY));
+                        }
+                    }
+                }
+
+                if (this.foods) {
+                    mCtx.fillStyle = '#ffd700';
+                    this.foods.forEach(f => {
+                        mCtx.fillRect(f.x * scaleX - 1, f.y * scaleY - 1, 2.5, 2.5);
+                    });
+                }
+
+                if (this.ghostbusters) {
+                    mCtx.fillStyle = '#ff3333';
+                    this.ghostbusters.forEach(gb => {
+                        mCtx.beginPath();
+                        mCtx.arc(gb.x * scaleX, gb.y * scaleY, 2.5, 0, Math.PI * 2);
+                        mCtx.fill();
+                    });
+                }
+
+                if (this.player) {
+                    mCtx.fillStyle = '#39ff14';
+                    mCtx.beginPath();
+                    mCtx.arc(this.player.x * scaleX, this.player.y * scaleY, 3, 0, Math.PI * 2);
+                    mCtx.fill();
+                }
+
+                mCtx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+                mCtx.lineWidth = 1;
+                mCtx.strokeRect(
+                    this.camera.x * scaleX,
+                    this.camera.y * scaleY,
+                    VIEW_WIDTH * scaleX,
+                    VIEW_HEIGHT * scaleY
+                );
+            }
+
+            handleHit() {
+                soundEngine.playHit();
+                this.lives--;
+                if (this.lives <= 0) {
+                    this.state = 'GAME_OVER';
+                    this.showOverlay(
+                        'CONTAINMENT REACHED!<br><span class="gb-red">SLIMER CAPTURED</span>',
+                        `The Ghostbuster trapped you with his proton stream!<br><br>Final Score: <span class="gb-gold">${this.score}</span><br>Food Eaten: <span class="gb-green">${this.foodEaten} / ${this.foodRequired}</span>`,
+                        'TRY AGAIN'
+                    );
+                }
+                this.updateUI();
+            }
+
+            handleWin() {
+                soundEngine.playWin();
+                this.state = 'WIN';
+                this.score += 500;
+                this.showOverlay(
+                    'FEAST COMPLETE!<br><span class="gb-gold">HOTEL CLEARED!</span>',
+                    `You devoured all banquet feasts in the Sedgewick Hotel and evaded capture!<br><br>Final Score: <span class="gb-gold">${this.score}</span>`,
+                    'PLAY AGAIN'
+                );
+                this.updateUI();
+            }
+
+            updateUI() {
+                const uiScore = document.getElementById('ui-score');
+                const uiFood = document.getElementById('ui-food');
+                const uiLives = document.getElementById('ui-lives');
+                const uiContainmentBar = document.getElementById('ui-containment-bar');
+                const uiContainmentVal = document.getElementById('ui-containment-val');
+
+                if (uiScore) uiScore.innerText = String(this.score).padStart(6, '0');
+                if (uiFood) uiFood.innerText = `${this.foodEaten} / ${this.foodRequired}`;
+                if (uiLives) uiLives.innerText = '❤'.repeat(Math.max(0, this.lives));
+
+                if (this.player) {
+                    for (let i = 1; i <= this.player.maxSlimeCharges; i++) {
+                        const chargeElem = document.getElementById(`slime-charge-${i}`);
+                        if (chargeElem) {
+                            if (i <= this.player.slimeCharges) {
+                                chargeElem.innerText = '💧';
+                                chargeElem.style.opacity = '1.0';
+                                chargeElem.style.filter = 'drop-shadow(0 0 4px #39ff14)';
+                            } else {
+                                chargeElem.innerText = '⚪';
+                                chargeElem.style.opacity = '0.35';
+                                chargeElem.style.filter = 'none';
+                            }
+                        }
+                    }
+
+                    const contPct = Math.round(this.player.containment);
+                    if (uiContainmentBar) uiContainmentBar.style.width = `${contPct}%`;
+                    if (uiContainmentVal) uiContainmentVal.innerText = `${contPct}%`;
+                }
+            }
+
+            loop() {
+                this.update();
+                this.render();
+                requestAnimationFrame(() => this.loop());
+            }
+        }
+
+        window.onload = function() {
+            window.game = new GameEngine();
+        };
+    </script>
+</body>
+</html>
